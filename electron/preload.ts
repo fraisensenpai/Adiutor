@@ -7,6 +7,7 @@ import type {
   CompletionRequest,
   ContextRequest,
   IndexProgress,
+  ProviderId,
   UsageRecord,
 } from '../src/shared/types';
 
@@ -47,8 +48,9 @@ const api: AdiutorApi = {
     status: () => ipcRenderer.invoke(IPC.providerStatus),
     complete: (request: CompletionRequest) => ipcRenderer.invoke(IPC.providerComplete, request),
     cancel: (requestId: string) => ipcRenderer.invoke(IPC.providerCancel, requestId),
-    setApiKey: (apiKey: string) => ipcRenderer.invoke(IPC.secretSet, apiKey),
-    clearApiKey: () => ipcRenderer.invoke(IPC.secretClear),
+    setApiKey: (provider: ProviderId, apiKey: string) =>
+      ipcRenderer.invoke(IPC.secretSet, provider, apiKey),
+    clearApiKey: (provider: ProviderId) => ipcRenderer.invoke(IPC.secretClear, provider),
   },
   usage: {
     list: () => ipcRenderer.invoke(IPC.usageList),

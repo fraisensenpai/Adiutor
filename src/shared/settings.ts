@@ -1,14 +1,20 @@
-import type { AppSettings } from './types';
+import type { AppSettings, ProviderId } from './types';
 
-export const DEMO_MODEL = 'demo-planner';
+export const PROVIDER_IDS: ProviderId[] = ['openai', 'anthropic', 'deepseek', 'grok'];
+
+export const DEFAULT_MODEL = 'gpt-4.1-mini';
+
+export function isProviderId(value: unknown): value is ProviderId {
+  return typeof value === 'string' && (PROVIDER_IDS as string[]).includes(value);
+}
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  provider: 'demo',
-  model: DEMO_MODEL,
+  provider: 'openai',
+  model: DEFAULT_MODEL,
   agents: {
-    planner: { model: DEMO_MODEL, enabled: true },
-    coder: { model: DEMO_MODEL, enabled: true },
-    reviewer: { model: DEMO_MODEL, enabled: true },
+    planner: { model: DEFAULT_MODEL, enabled: true },
+    coder: { model: DEFAULT_MODEL, enabled: true },
+    reviewer: { model: DEFAULT_MODEL, enabled: true },
   },
   maxContextTokens: 6000,
 };

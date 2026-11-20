@@ -21,7 +21,7 @@ export function Badge({
   title,
 }: {
   children: ReactNode;
-  tone?: 'neutral' | 'accent' | 'success' | 'warn' | 'danger' | 'demo' | 'live';
+  tone?: 'neutral' | 'accent' | 'success' | 'warn' | 'danger';
   title?: string;
 }) {
   return (

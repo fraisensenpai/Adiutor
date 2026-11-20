@@ -140,7 +140,7 @@ export function EditorPane() {
               description={
                 workspace
                   ? 'Soldaki dosya ağacından bir dosya açın. Açtığınız dosyalar sekmelerde görünür; AI önerileri diff olarak açılır ve onayınız olmadan yazılmaz.'
-                  : 'Bir proje klasörü açabilir veya gerçek dosyalarla demo akışını denemek için örnek projeyi oluşturabilirsiniz. Anahtar olmadan demo modu çalışır.'
+                  : 'Bir proje klasörü açın veya ajan akışını gerçek dosyalarla denemek için örnek projeyi oluşturun. AI istekleri için Ayarlar bölümünden sağlayıcı anahtarınızı ekleyin.'
               }
               actions={
                 <>

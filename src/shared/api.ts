@@ -11,6 +11,7 @@ import type {
   FileTreeNode,
   IndexProgress,
   IndexSnapshot,
+  ProviderId,
   ProviderStatus,
   SymbolRelations,
   TerminalStartResult,
@@ -63,8 +64,8 @@ export interface AdiutorApi {
     status(): Promise<ProviderStatus>;
     complete(request: CompletionRequest): Promise<CompletionResult>;
     cancel(requestId: string): Promise<void>;
-    setApiKey(apiKey: string): Promise<{ ok: boolean; error?: string }>;
-    clearApiKey(): Promise<void>;
+    setApiKey(provider: ProviderId, apiKey: string): Promise<{ ok: boolean; error?: string }>;
+    clearApiKey(provider: ProviderId): Promise<void>;
   };
   usage: {
     list(): Promise<UsageRecord[]>;

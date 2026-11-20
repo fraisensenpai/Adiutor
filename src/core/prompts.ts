@@ -1,4 +1,4 @@
-import type { ContextItem, IndexSnapshot, ProviderId, ChatTurn } from '@shared/types';
+import type { ContextItem, IndexSnapshot, ChatTurn } from '@shared/types';
 
 export interface AgentFile {
   path: string;
@@ -120,17 +120,12 @@ Kullanıcıya doğrudan yanıt ver; dosya değiştirme.`;
 
 const ROLE_LABEL = { planner: 'Planlayıcı ajan', coder: 'Kodlayıcı ajan', reviewer: 'İnceleyici ajan' };
 
-/** Demo sağlayıcı ham JSON'u okur; OpenAI adaptörü sistem + kullanıcı mesajı alır. */
+/** Tüm sağlayıcılar sistem + kullanıcı mesajı çifti alır. */
 export function buildMessages(
-  provider: ProviderId,
   purpose: AgentPayload['purpose'],
   payload: AgentPayload,
   role: 'planner' | 'coder' | 'reviewer',
 ): ChatTurn[] {
-  if (provider === 'demo') {
-    return [{ role: 'user', content: JSON.stringify(payload) }];
-  }
-
   const instructions: Record<AgentPayload['purpose'], string> = {
     plan: 'Aşağıdaki görevi planla. Yanıtı JSON şemasına uygun ver.',
     code: 'Aşağıdaki görev için dosya değişikliklerini JSON olarak öner.',

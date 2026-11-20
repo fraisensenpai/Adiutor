@@ -9,7 +9,6 @@ import { formatTime, roleLabel, taskStatusLabel } from '@/lib/format';
 import type { ChatMessage } from '@shared/types';
 
 function MessageMeta({ message }: { message: ChatMessage }) {
-  const settings = useStore((state) => state.settings);
   const agents = useStore((state) => state.agents);
   const label =
     message.role === 'user'
@@ -25,12 +24,7 @@ function MessageMeta({ message }: { message: ChatMessage }) {
       <span className="agent-name">{label}</span>
       <span>{formatTime(message.createdAt)}</span>
       {message.model ? <span className="dim">{message.model}</span> : null}
-      {message.demo || (message.role === 'assistant' && settings.provider === 'demo') ? (
-        <span className="badge badge-demo">demo</span>
-      ) : message.role === 'assistant' ? (
-        <span className="badge badge-live">gerçek</span>
-      ) : null}
-      {message.contextTokens ? <span>~{formatTokens(message.contextTokens)} bağlam token</span> : null}
+      {message.contextTokens ? <span>~{formatTokens(message.contextTokens)} token</span> : null}
     </div>
   );
 }
@@ -68,8 +62,9 @@ export function ChatPanel() {
   const contextTokens = contextItems.reduce((sum, item) => sum + item.tokens, 0);
   const pendingChanges = changes.filter((change) => change.status === 'pending').length;
   const pendingApprovals = approvals.filter((approval) => approval.status === 'pending').length;
-  const isDemo = settings.provider === 'demo';
   const running = task.status === 'running' || task.status === 'awaiting-approval';
+  const provider = providerStatus?.providers.find((item) => item.id === settings.provider);
+  const missingKey = providerStatus ? providerStatus.apiKeys[settings.provider] !== true : false;
 
   const submitTask = () => {
     const title = chatInput.trim();
@@ -82,10 +77,9 @@ export function ChatPanel() {
     <aside className="chat-panel" aria-label="AI sohbeti">
       <div className="chat-header">
         <div className="grow">
-          <div className="chat-title">AI Sohbeti</div>
+          <div className="chat-title">Sohbet</div>
           <div className="chat-subtitle">
-            {isDemo ? 'Demo modu · ağ yok' : `OpenAI · ${settings.model}`}
-            {providerStatus && settings.provider === 'openai' && !providerStatus.hasApiKey ? ' · anahtar yok' : ''}
+            {provider?.label ?? 'Sağlayıcı'} · {settings.model}
           </div>
         </div>
         {pendingChanges > 0 ? (
@@ -103,7 +97,6 @@ export function ChatPanel() {
         >
           Temizle
         </button>
-        <Badge tone={isDemo ? 'demo' : 'live'}>{isDemo ? 'demo' : 'gerçek'}</Badge>
       </div>
 
       <div className="chat-context-bar">
@@ -233,7 +226,12 @@ export function ChatPanel() {
             </button>
           )}
           <span className="composer-hint grow">
-            {isDemo ? 'Demo: model çağrılmaz, öneriler onayınızla uygulanır.' : 'Anahtar yalnızca ana süreçte kullanılır.'}
+            {missingKey ? `İstek için ${provider?.label ?? 'sağlayıcı'} anahtarı gerekli.` : 'Enter: sohbet · Ctrl+Enter: görev'}
+            {missingKey ? (
+              <button type="button" className="link-button" style={{ marginLeft: 6 }} onClick={() => setView('settings')}>
+                Anahtar ekle
+              </button>
+            ) : null}
           </span>
         </div>
       </div>

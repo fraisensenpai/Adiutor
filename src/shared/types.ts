@@ -144,21 +144,22 @@ export interface ContextBundle {
 /* Sağlayıcılar                                                        */
 /* ------------------------------------------------------------------ */
 
-export type ProviderId = 'demo' | 'openai';
+export type ProviderId = 'openai' | 'anthropic' | 'deepseek' | 'grok';
 
 export interface ProviderInfo {
   id: ProviderId;
   label: string;
-  kind: 'demo' | 'api';
   requiresApiKey: boolean;
   models: string[];
   defaultModel: string;
   note: string;
+  keyHint: string;
+  docsUrl: string;
 }
 
 export interface ProviderStatus {
   providers: ProviderInfo[];
-  hasApiKey: boolean;
+  apiKeys: Partial<Record<ProviderId, boolean>>;
   encryptionAvailable: boolean;
   keyStorage: string;
 }
@@ -196,7 +197,6 @@ export interface CompletionResult {
   usage: TokenUsage;
   model: string;
   provider: ProviderId;
-  demo: boolean;
   latencyMs: number;
 }
 
@@ -312,7 +312,6 @@ export interface ChatMessage {
   agentRole?: AgentRole;
   pending?: boolean;
   error?: boolean;
-  demo?: boolean;
   changeIds?: string[];
   approvalIds?: string[];
   contextTokens?: number;

@@ -10,6 +10,7 @@ export function UsageView() {
   const summary = useStore((state) => state.usageSummaryData);
   const refreshUsage = useStore((state) => state.refreshUsage);
   const settings = useStore((state) => state.settings);
+  const providerStatus = useStore((state) => state.providerStatus);
 
   useEffect(() => {
     void refreshUsage();
@@ -40,7 +41,7 @@ export function UsageView() {
         <InfoIcon size={15} />
         <span>
           Kalan kota gösterilmez: sağlayıcı planındaki kalan hak resmi bir API ile alınmadıkça bilinemez. Yalnızca bu
-          uygulamanın kaydettiği istekler ve token sayıları gösterilir. Demo modundaki değerler kurallı tahmindir.
+          uygulamanın kaydettiği istekler ve token sayıları gösterilir.
         </span>
       </div>
 
@@ -60,16 +61,14 @@ export function UsageView() {
             <div className="stat-card">
               <div className="stat-label">Tahmini</div>
               <div className="stat-value">{formatTokens(summary.estimatedTokens)}</div>
-              <div className="stat-hint">demo veya eksik kullanım alanı</div>
+              <div className="stat-hint">sağlayıcı kullanım alanı yoksa tahmin</div>
             </div>
             <div className="stat-card">
               <div className="stat-label">Etkin sağlayıcı</div>
               <div className="stat-value" style={{ fontSize: 15 }}>
-                {settings.provider === 'demo' ? 'Demo' : 'OpenAI'}
+                {providerStatus?.providers.find((item) => item.id === settings.provider)?.label ?? settings.provider}
               </div>
-              <div className="stat-hint">
-                {settings.provider === 'demo' ? 'ağ bağlantısı yok' : settings.model}
-              </div>
+              <div className="stat-hint">{settings.model}</div>
             </div>
           </div>
 
@@ -122,7 +121,7 @@ export function UsageView() {
                           </td>
                           <td className="num">{formatTokens(record.totalTokens)}</td>
                           <td>
-                            {record.estimated ? <Badge tone="demo">tahmini</Badge> : <Badge tone="live">ölçüldü</Badge>}
+                            {record.estimated ? <Badge tone="neutral">tahmini</Badge> : <Badge tone="success">ölçüldü</Badge>}
                           </td>
                         </tr>
                       ))}
@@ -179,7 +178,7 @@ export function UsageView() {
               <div className="note">
                 <InfoIcon size={14} />
                 <span>
-                  Demo modunda yanıtlar kurallı üretilir; token değerleri karakter uzunluğundan tahmin edilir ve
+                  Sağlayıcı gerçek kullanım döndürmezse token değerleri karakter uzunluğundan tahmin edilir ve
                   “tahmini” etiketiyle ayrı sayılır.
                 </span>
               </div>

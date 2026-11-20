@@ -46,7 +46,6 @@ function AgentCard({ role }: { role: AgentRole }) {
   const setAgentRole = useStore((state) => state.setAgentRole);
 
   const models = providerStatus?.providers.find((provider) => provider.id === settings.provider)?.models ?? [];
-  const isDemo = settings.provider === 'demo';
   const position = CARD_POSITIONS[role];
   const accentClass = agent.role === 'planner' ? 'is-planner' : agent.role === 'coder' ? 'is-coder' : 'is-reviewer';
 
@@ -72,7 +71,7 @@ function AgentCard({ role }: { role: AgentRole }) {
             <StatusDot status={statusToDot(agent.status)} />
             {statusLabel(agent.status)}
             <span className="dim">· {formatTokens(agent.tokens)} token</span>
-            {agent.estimatedTokens > 0 ? <Badge tone="demo">tahmini</Badge> : null}
+            {agent.estimatedTokens > 0 ? <Badge tone="neutral">tahmini</Badge> : null}
           </div>
         </div>
       </div>
@@ -99,11 +98,10 @@ function AgentCard({ role }: { role: AgentRole }) {
             id={`model-${role}`}
             className="input"
             list={`models-${role}`}
-            value={isDemo ? 'demo-planner' : agent.model}
+            value={agent.model}
             onChange={(event) => setAgentModel(role, event.target.value)}
-            disabled={isDemo}
             spellCheck={false}
-            title={isDemo ? 'Demo modunda gerçek model seçilemez.' : 'Model kimliği'}
+            title="Model kimliği"
           />
           <datalist id={`models-${role}`}>
             {models.map((model) => (

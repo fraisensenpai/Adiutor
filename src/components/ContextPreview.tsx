@@ -104,9 +104,7 @@ export function ContextPreview() {
         </div>
 
         <div className="modal-footer">
-          <span>
-            Bu bağlam yalnızca siz istek gönderdiğinizde okunur. Demo modunda ağ bağlantısı kurulmaz.
-          </span>
+          <span>Bu bağlam yalnızca siz istek gönderdiğinizde okunur ve seçtiğiniz sağlayıcıya iletilir.</span>
           <button type="button" className="button button-primary button-small" style={{ marginLeft: 'auto' }} onClick={() => close(false)}>
             Kapat
           </button>

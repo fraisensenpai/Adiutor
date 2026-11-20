@@ -6,7 +6,7 @@ export function StatusBar() {
   const workspace = useStore((state) => state.workspace);
   const index = useStore((state) => state.index);
   const indexProgress = useStore((state) => state.indexProgress);
-  const settings = useStore((state) => state.settings);
+
   const task = useStore((state) => state.task);
   const usageSummaryData = useStore((state) => state.usageSummaryData);
   const activePath = useStore((state) => state.activePath);
@@ -61,7 +61,6 @@ export function StatusBar() {
         <span className="status-item" title="Bu uygulamanın kaydettiği token kullanımı (tahmini + ölçülen)">
           {formatTokens(usageSummaryData?.totalTokens ?? 0)} token
         </span>
-        <span className="status-item">{settings.provider === 'demo' ? 'demo' : settings.model}</span>
       </div>
     </footer>
   );

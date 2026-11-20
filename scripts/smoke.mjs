@@ -6,7 +6,7 @@
  * görünmez olduğu için normal kullanımı etkilemez.
  *
  * Kullanım: npm run smoke            (temel: uygulama açılışı)
- *          npm run smoke -- deep     (örnek proje + indeks + demo ajan + grafik)
+ *          npm run smoke -- deep     (örnek proje + indeks + ajan akışı + grafik)
  */
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';

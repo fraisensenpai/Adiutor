@@ -4,7 +4,7 @@ import { buildWorkspaceDigest, type AgentFile } from '@/core/prompts';
 import { runTask, type TaskRuntime } from '@/core/taskRunner';
 import { taskControl } from '@/core/taskControl';
 import { awaitApproval, settleAllApprovals, settleApproval } from '@/core/approvals';
-import { DEMO_MODEL } from '@shared/settings';
+import { DEFAULT_SETTINGS } from '@shared/settings';
 import type { LspDiagnosticItem } from '@shared/api';
 import type {
   AgentEdgeState,
@@ -21,6 +21,7 @@ import type {
   Language,
   PendingApproval,
   ProposedChange,
+  ProviderId,
   ProviderStatus,
   TaskLogEntry,
   TaskStatus,
@@ -138,10 +139,10 @@ interface AppActions {
   setAgentModel(role: AgentRole, model: string): void;
   setAgentName(role: AgentRole, name: string): void;
   setAgentRole(role: AgentRole, next: AgentRole): void;
-  setProvider(provider: 'demo' | 'openai'): Promise<void>;
+  setProvider(provider: ProviderId): Promise<void>;
   saveSettings(patch: Partial<AppSettings>): Promise<void>;
-  setApiKey(apiKey: string): Promise<boolean>;
-  clearApiKey(): Promise<void>;
+  setApiKey(provider: ProviderId, apiKey: string): Promise<boolean>;
+  clearApiKey(provider: ProviderId): Promise<void>;
   notify(message: string, tone?: ToastState['tone']): void;
   dismissToast(): void;
 }
@@ -149,7 +150,7 @@ interface AppActions {
 export type AppStore = AppState & AppActions;
 
 function initialAgents(models?: Partial<Record<AgentRole, string>>): Record<AgentRole, AgentNodeState> {
-  const model = (role: AgentRole) => models?.[role] ?? DEMO_MODEL;
+  const model = (role: AgentRole) => models?.[role] ?? DEFAULT_SETTINGS.model;
   return {
     planner: {
       id: 'planner',
@@ -243,20 +244,29 @@ async function collectTargetFiles(state: AppState): Promise<AgentFile[]> {
   return files;
 }
 
-const WELCOME = (provider: 'demo' | 'openai'): ChatMessage => ({
+function providerLabelOf(status: ProviderStatus | null, provider: ProviderId): string {
+  return status?.providers.find((item) => item.id === provider)?.label ?? provider;
+}
+
+function hasKeyFor(status: ProviderStatus | null, provider: ProviderId): boolean {
+  return status?.apiKeys[provider] === true;
+}
+
+const WELCOME = (status: ProviderStatus | null, settings: AppSettings): ChatMessage => ({
   id: 'welcome',
   role: 'system',
   createdAt: Date.now(),
-  content:
-    provider === 'demo'
-      ? [
-          '**Demo modu etkin.** Hiçbir model çağrılmıyor; yanıtlar kurallı olarak üretiliyor ve her yanıt "demo" olarak işaretleniyor.',
-          '',
-          'Başlamak için soldaki dosya ağacından bir dosya açın veya **Örnek projeyi aç** ile gerçek bir demo projesi oluşturun. Sonra buraya bir görev yazıp **Görevi başlat** düğmesini kullanın.',
-          '',
-          'Gerçek model için: **Ayarlar → Sağlayıcı → OpenAI** (anahtar işletim sistemi kasasında saklanır).',
-        ].join('\n')
-      : '**OpenAI sağlayıcısı seçili.** API anahtarı yalnızca ana süreçte, işletim sistemi kasasından okunur. Bir görev yazıp **Görevi başlat** ile planlayıcı, kodlayıcı ve inceleyici ajanları çalıştırabilirsiniz.',
+  content: hasKeyFor(status, settings.provider)
+    ? [
+        `**${providerLabelOf(status, settings.provider)} · ${settings.model}**`,
+        '',
+        'Bir proje klasörü açın, soldaki ağaçtan dosya bağlama ekleyin ve görev yazın. Ajanlar plan → kod → inceleme sırasıyla çalışır; dosyalar yalnızca diff’i onayladığınızda yazılır.',
+      ].join('\n')
+    : [
+        '**Başlamak için bir API anahtarı ekleyin.**',
+        '',
+        'Ayarlar → Sağlayıcı bölümünden OpenAI, Claude, DeepSeek veya Grok anahtarınızı kaydedin. Anahtar işletim sisteminin güvenli kasasında şifreli tutulur ve yalnızca ana süreçte okunur.',
+      ].join('\n'),
 });
 
 function pushChat(set: (partial: Partial<AppState>) => void, get: () => AppStore, message: ChatMessage): void {
@@ -283,16 +293,7 @@ export const useStore = create<AppStore>()((set, get) => ({
   chat: [],
   chatInput: '',
   chatBusy: false,
-  settings: {
-    provider: 'demo',
-    model: DEMO_MODEL,
-    agents: {
-      planner: { model: DEMO_MODEL, enabled: true },
-      coder: { model: DEMO_MODEL, enabled: true },
-      reviewer: { model: DEMO_MODEL, enabled: true },
-    },
-    maxContextTokens: 6000,
-  },
+  settings: DEFAULT_SETTINGS,
   providerStatus: null,
   agents: initialAgents(),
   edges: initialEdges,
@@ -334,7 +335,7 @@ export const useStore = create<AppStore>()((set, get) => ({
           coder: settings.agents.coder.model,
           reviewer: settings.agents.reviewer.model,
         }),
-        chat: chat.length > 0 ? chat : [WELCOME(settings.provider)],
+        chat: chat.length > 0 ? chat : [WELCOME(providerStatus, settings)],
       });
       subscribeEvents(set, get);
     } catch (error) {
@@ -621,7 +622,7 @@ export const useStore = create<AppStore>()((set, get) => ({
   async clearChat() {
     try {
       await bridge.chat.clear();
-      set({ chat: [WELCOME(get().settings.provider)] });
+      set({ chat: [WELCOME(get().providerStatus, get().settings)] });
       get().notify('Sohbet geçmişi temizlendi.', 'success');
     } catch (error) {
       get().notify(
@@ -640,7 +641,12 @@ export const useStore = create<AppStore>()((set, get) => ({
       return;
     }
     const provider = state.settings.provider;
-    const model = provider === 'demo' ? 'demo-planner' : state.settings.model;
+    const model = state.settings.model;
+    if (!hasKeyFor(state.providerStatus, provider)) {
+      get().notify(`${providerLabelOf(state.providerStatus, provider)} için API anahtarı ekleyin.`, 'warn');
+      get().setView('settings');
+      return;
+    }
     const userMessage: ChatMessage = {
       id: makeId('msg'),
       role: 'user',
@@ -668,22 +674,19 @@ export const useStore = create<AppStore>()((set, get) => ({
         requestId: makeId('req'),
         provider,
         model,
-        messages:
-          provider === 'demo'
-            ? [{ role: 'user', content: JSON.stringify(payload) }]
-            : [
-                {
-                  role: 'system',
-                  content:
-                    'Sen Adiutor masaüstü kod editörünün asistanısın. Verilen bağlamı kullan, dosya değiştirme, yalnızca açıkla. Yanıtı kısa ve Markdown olarak ver.',
-                },
-                {
-                  role: 'user',
-                  content: `${text}\n\nBAĞLAM:\n${payload.digest}\n\n${payload.files
-                    .map((file) => `--- ${file.path} ---\n${file.content}`)
-                    .join('\n\n')}`,
-                },
-              ],
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Sen Adiutor masaüstü kod editörünün asistanısın. Verilen bağlamı kullan, dosya değiştirme, yalnızca açıkla. Yanıtı kısa ve Markdown olarak ver.',
+          },
+          {
+            role: 'user',
+            content: `${text}\n\nBAĞLAM:\n${payload.digest}\n\n${payload.files
+              .map((file) => `--- ${file.path} ---\n${file.content}`)
+              .join('\n\n')}`,
+          },
+        ],
         maxTokens: 1200,
         purpose: 'chat',
         taskId: state.task.id ?? 'chat',
@@ -711,7 +714,6 @@ export const useStore = create<AppStore>()((set, get) => ({
         role: 'assistant',
         content: result.text || '(boş yanıt)',
         createdAt: Date.now(),
-        demo: result.demo,
         model: result.model,
         contextTokens: result.usage.promptTokens,
       });
@@ -738,6 +740,11 @@ export const useStore = create<AppStore>()((set, get) => ({
     }
     if (state.task.status === 'running') {
       get().notify('Zaten çalışan bir görev var. Önce durdurun.', 'warn');
+      return;
+    }
+    if (!hasKeyFor(state.providerStatus, state.settings.provider)) {
+      get().notify(`${providerLabelOf(state.providerStatus, state.settings.provider)} için API anahtarı ekleyin.`, 'warn');
+      get().setView('settings');
       return;
     }
     const taskId = makeId('task');
@@ -930,7 +937,7 @@ export const useStore = create<AppStore>()((set, get) => ({
 
   async setProvider(provider) {
     const info = get().providerStatus?.providers.find((item) => item.id === provider);
-    const model = provider === 'demo' ? DEMO_MODEL : info?.defaultModel ?? get().settings.model;
+    const model = info?.defaultModel ?? get().settings.model;
     const settings: AppSettings = {
       ...get().settings,
       provider,
@@ -947,8 +954,11 @@ export const useStore = create<AppStore>()((set, get) => ({
     });
     const saved = await bridge.settings.set(settings);
     set({ settings: saved });
-    if (provider === 'openai' && !get().providerStatus?.hasApiKey) {
-      get().notify('OpenAI seçildi. İstek yapmadan önce API anahtarını kaydedin.', 'warn');
+    if (!hasKeyFor(get().providerStatus, provider)) {
+      get().notify(
+        `${info?.label ?? provider} seçildi. İstek yapmadan önce API anahtarını kaydedin.`,
+        'warn',
+      );
     }
   },
 
@@ -963,23 +973,26 @@ export const useStore = create<AppStore>()((set, get) => ({
     }
   },
 
-  async setApiKey(apiKey) {
-    const result = await bridge.providers.setApiKey(apiKey);
+  async setApiKey(provider, apiKey) {
+    const result = await bridge.providers.setApiKey(provider, apiKey);
     const providerStatus = await bridge.providers.status();
     set({ providerStatus });
     if (!result.ok) {
       get().notify(result.error ?? 'Anahtar kaydedilemedi.', 'error');
       return false;
     }
-    get().notify('API anahtarı işletim sistemi kasasına şifreli olarak kaydedildi.', 'success');
+    get().notify(
+      `${providerLabelOf(providerStatus, provider)} anahtarı işletim sistemi kasasına şifreli olarak kaydedildi.`,
+      'success',
+    );
     return true;
   },
 
-  async clearApiKey() {
-    await bridge.providers.clearApiKey();
+  async clearApiKey(provider) {
+    await bridge.providers.clearApiKey(provider);
     const providerStatus = await bridge.providers.status();
     set({ providerStatus });
-    get().notify('API anahtarı silindi.', 'info');
+    get().notify(`${providerLabelOf(providerStatus, provider)} anahtarı silindi.`, 'info');
   },
 
   notify(message, tone = 'info') {

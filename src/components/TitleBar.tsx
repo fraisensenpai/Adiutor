@@ -9,7 +9,7 @@ import {
   MapIcon,
   PanelIcon,
 } from './ui/Icons';
-import { Badge, IconButton } from './ui/primitives';
+import { IconButton } from './ui/primitives';
 import { basename } from '@/lib/format';
 import logo from '@/assets/logo-mark.png';
 
@@ -24,28 +24,20 @@ export function TitleBar() {
   const view = useStore((state) => state.view);
   const setView = useStore((state) => state.setView);
   const workspace = useStore((state) => state.workspace);
-  const providerStatus = useStore((state) => state.providerStatus);
-  const settings = useStore((state) => state.settings);
   const approvals = useStore((state) => state.approvals);
   const changes = useStore((state) => state.changes);
   const openReview = useStore((state) => state.openReview);
   const openFolderDialog = useStore((state) => state.openFolderDialog);
-  const openSample = useStore((state) => state.openSample);
   const toggleBottom = useStore((state) => state.toggleBottom);
 
   const pendingApprovals = approvals.filter((approval) => approval.status === 'pending').length;
   const pendingChanges = changes.filter((change) => change.status === 'pending').length;
-  const provider = providerStatus?.providers.find((item) => item.id === settings.provider);
-  const isDemo = settings.provider === 'demo';
 
   return (
     <header className="titlebar">
       <div className="brand">
         <img className="brand-mark" src={logo} alt="" width={24} height={24} aria-hidden="true" />
-        <div>
-          <div className="brand-name">Adiutor</div>
-          <span className="brand-sub">AI kod editörü</span>
-        </div>
+        <span className="brand-name">Adiutor</span>
       </div>
 
       <button
@@ -61,12 +53,6 @@ export function TitleBar() {
           <span>Proje klasörü aç</span>
         )}
       </button>
-
-      {!workspace ? (
-        <button type="button" className="button button-ghost button-small" onClick={() => void openSample()}>
-          Örnek projeyi aç
-        </button>
-      ) : null}
 
       <nav className="view-tabs" aria-label="Ana görünümler">
         {VIEWS.map((item) => {
@@ -98,24 +84,6 @@ export function TitleBar() {
             Değişiklikleri incele
             <span className="tab-count">{pendingChanges}</span>
           </button>
-        ) : null}
-
-        <span
-          className={`provider-pill ${isDemo ? 'is-demo' : 'is-live'}`}
-          title={
-            isDemo
-              ? 'Demo modu: ağ bağlantısı yok, yanıtlar kurallı üretilir.'
-              : `Sağlayıcı: ${provider?.label ?? 'OpenAI'} — model: ${settings.model}`
-          }
-        >
-          <span className={`status-dot ${isDemo ? 'status-dot-waiting' : 'status-dot-done'}`} aria-hidden="true" />
-          {isDemo ? 'Demo modu' : provider?.label ?? 'OpenAI'}
-        </span>
-
-        {providerStatus && settings.provider === 'openai' && !providerStatus.hasApiKey ? (
-          <Badge tone="danger" title="API anahtarı ayarlanmadı">
-            anahtar yok
-          </Badge>
         ) : null}
 
         <IconButton label="Alt paneli aç/kapat" onClick={toggleBottom}>

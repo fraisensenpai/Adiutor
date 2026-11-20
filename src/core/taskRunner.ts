@@ -126,8 +126,7 @@ async function callAgent(
 ): Promise<{ json: unknown; result: CompletionResult }> {
   const { settings } = runtime;
   const provider = settings.provider;
-  const model =
-    provider === 'demo' ? 'demo-planner' : settings.agents[agent].model || settings.model;
+  const model = settings.agents[agent].model || settings.model;
   const requestId = makeId('req');
 
   runtime.patchAgent(agent, { status: 'running', model });
@@ -138,7 +137,7 @@ async function callAgent(
       requestId,
       provider,
       model,
-      messages: buildMessages(provider, purpose, payload, agent),
+      messages: buildMessages(purpose, payload, agent),
       maxTokens,
       temperature: purpose === 'review' ? 0.1 : 0.2,
       jsonMode: true,
@@ -284,7 +283,6 @@ async function runCoder(
       role: 'assistant',
       agentRole: 'coder',
       model: result.model,
-      demo: result.demo,
       content: [
         `**Kodlayıcı — ${added} dosyada öneri**`,
         '',
@@ -362,7 +360,6 @@ async function runReviewer(runtime: TaskRuntime, allowFollowUp: boolean): Promis
       role: 'assistant',
       agentRole: 'reviewer',
       model: result.model,
-      demo: result.demo,
       content: [
         `**İnceleyici — ${verdict === 'onayla' ? 'onay önerisi' : 'düzeltme önerisi'}**`,
         '',
@@ -485,7 +482,6 @@ export async function runTask(runtime: TaskRuntime): Promise<void> {
         role: 'assistant',
         agentRole: 'planner',
         model: result.model,
-        demo: result.demo,
         content: [
           '**Planlayıcı — plan hazır**',
           '',

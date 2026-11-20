@@ -17,18 +17,17 @@ export function SettingsView() {
   const setAgentModel = useStore((state) => state.setAgentModel);
   const setApiKey = useStore((state) => state.setApiKey);
   const clearApiKey = useStore((state) => state.clearApiKey);
-  const openSample = useStore((state) => state.openSample);
 
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [savingKey, setSavingKey] = useState(false);
 
   const provider = providerStatus?.providers.find((item) => item.id === settings.provider);
-  const isDemo = settings.provider === 'demo';
+  const hasKey = providerStatus?.apiKeys[settings.provider] === true;
 
   const submitKey = async () => {
     if (!apiKeyInput.trim()) return;
     setSavingKey(true);
-    const ok = await setApiKey(apiKeyInput.trim());
+    const ok = await setApiKey(settings.provider, apiKeyInput.trim());
     setSavingKey(false);
     if (ok) setApiKeyInput('');
   };
@@ -38,15 +37,7 @@ export function SettingsView() {
       <div className="view-header">
         <div>
           <h1 className="view-title">Ayarlar</h1>
-          <p className="view-desc">
-            Sağlayıcı, model ve güvenlik tercihleri. Anahtarlar düz metin olarak hiçbir zaman diske veya tarayıcı
-            deposuna yazılmaz.
-          </p>
-        </div>
-        <div className="view-header-actions">
-          <button type="button" className="button" onClick={() => void openSample()}>
-            Örnek projeyi aç
-          </button>
+          <p className="view-desc">Sağlayıcı, model ve güvenlik tercihleri.</p>
         </div>
       </div>
 
@@ -54,7 +45,7 @@ export function SettingsView() {
         <div className="stack">
           <section className="panel panel-pad" aria-labelledby="provider-title">
             <div id="provider-title">
-              <SectionTitle hint="adaptör tabanlı">Sağlayıcı</SectionTitle>
+              <SectionTitle hint="anahtar işletim sistemi kasasında">Sağlayıcı</SectionTitle>
             </div>
             <div className="provider-options" role="radiogroup" aria-label="AI sağlayıcı">
               {(providerStatus?.providers ?? []).map((item) => (
@@ -64,13 +55,22 @@ export function SettingsView() {
                   role="radio"
                   aria-checked={settings.provider === item.id}
                   className="provider-option"
-                  onClick={() => void setProvider(item.id === 'openai' ? 'openai' : 'demo')}
+                  onClick={() => {
+                    setApiKeyInput('');
+                    void setProvider(item.id);
+                  }}
                 >
-                  <strong>
-                    {item.label}{' '}
-                    {item.kind === 'demo' ? <Badge tone="demo">ağ yok</Badge> : <Badge tone="live">API</Badge>}
-                  </strong>
-                  <span>{item.note}</span>
+                  <strong>{item.label}</strong>
+                  <span className="provider-model">{item.defaultModel}</span>
+                  <span className="provider-key-state">
+                    <span
+                      className={`status-dot ${
+                        providerStatus?.apiKeys[item.id] ? 'status-dot-done' : 'status-dot-idle'
+                      }`}
+                      aria-hidden="true"
+                    />
+                    {providerStatus?.apiKeys[item.id] ? 'anahtar kayıtlı' : 'anahtar yok'}
+                  </span>
                 </button>
               ))}
             </div>
@@ -83,9 +83,8 @@ export function SettingsView() {
                 id="provider-model"
                 className="input"
                 list="provider-models"
-                value={isDemo ? 'demo-planner' : settings.model}
+                value={settings.model}
                 onChange={(event) => void saveSettings({ model: event.target.value })}
-                disabled={isDemo}
                 spellCheck={false}
               />
               <datalist id="provider-models">
@@ -93,61 +92,58 @@ export function SettingsView() {
                   <option key={model} value={model} />
                 ))}
               </datalist>
+              <span className="field-hint">Model kimliğini elle de yazabilirsiniz.</span>
+            </div>
+
+            <div className="field">
+              <label className="field-label" htmlFor="api-key">
+                {provider?.label ?? 'Sağlayıcı'} API anahtarı
+              </label>
+              <div className="field-row">
+                <input
+                  id="api-key"
+                  className="input"
+                  type="password"
+                  autoComplete="off"
+                  value={apiKeyInput}
+                  onChange={(event) => setApiKeyInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') void submitKey();
+                  }}
+                  placeholder={provider?.keyHint ?? 'API anahtarı'}
+                  spellCheck={false}
+                />
+                <button
+                  type="button"
+                  className="button button-primary"
+                  onClick={() => void submitKey()}
+                  disabled={savingKey || !apiKeyInput.trim()}
+                >
+                  {savingKey ? 'Kaydediliyor…' : 'Kaydet'}
+                </button>
+                {hasKey ? (
+                  <button
+                    type="button"
+                    className="button button-danger"
+                    onClick={() => void clearApiKey(settings.provider)}
+                  >
+                    Sil
+                  </button>
+                ) : null}
+              </div>
               <span className="field-hint">
-                Model kimliğini elle de yazabilirsiniz. Demo modunda gerçek model çağrılmaz.
+                Anahtar işletim sisteminin güvenli kasasında şifreli tutulur ve yalnızca ana süreçte okunur.
               </span>
             </div>
 
-            {!isDemo ? (
-              <div className="field">
-                <label className="field-label" htmlFor="api-key">
-                  OpenAI API anahtarı
-                </label>
-                <div className="field-row">
-                  <input
-                    id="api-key"
-                    className="input"
-                    type="password"
-                    autoComplete="off"
-                    value={apiKeyInput}
-                    onChange={(event) => setApiKeyInput(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') void submitKey();
-                    }}
-                    placeholder="sk-…"
-                    spellCheck={false}
-                  />
-                  <button
-                    type="button"
-                    className="button button-primary"
-                    onClick={() => void submitKey()}
-                    disabled={savingKey || !apiKeyInput.trim()}
-                  >
-                    {savingKey ? 'Kaydediliyor…' : 'Kaydet'}
-                  </button>
-                  {providerStatus?.hasApiKey ? (
-                    <button type="button" className="button button-danger" onClick={() => void clearApiKey()}>
-                      Sil
-                    </button>
-                  ) : null}
-                </div>
-                <span className="field-hint">
-                  Anahtar, işletim sisteminin güvenli kasası ({providerStatus?.keyStorage ?? 'safeStorage'}) ile
-                  şifrelenir. Anahtar yalnızca ana süreçte okunur; arayüze, sohbete veya günlüklere yazılmaz.
-                </span>
-              </div>
-            ) : null}
-
-            <div className="key-status" style={{ marginTop: 10 }}>
+            <div className="key-status">
               <ShieldIcon size={14} />
               <span className="grow">
                 {providerStatus?.encryptionAvailable
-                  ? `Güvenli kasa kullanılabilir: ${providerStatus.keyStorage}`
-                  : 'Güvenli kasa kullanılamıyor; bu durumda anahtar kaydedilmez.'}
+                  ? `Güvenli kasa: ${providerStatus.keyStorage}`
+                  : 'Güvenli kasa kullanılamıyor; anahtar kaydedilmez.'}
               </span>
-              <Badge tone={providerStatus?.hasApiKey ? 'success' : 'neutral'}>
-                {providerStatus?.hasApiKey ? 'anahtar kayıtlı' : 'anahtar yok'}
-              </Badge>
+              <Badge tone={hasKey ? 'success' : 'neutral'}>{hasKey ? 'hazır' : 'anahtar yok'}</Badge>
             </div>
           </section>
 
@@ -159,28 +155,27 @@ export function SettingsView() {
               <thead>
                 <tr>
                   <th>Rol</th>
-                  <th>Ajan</th>
                   <th>Model</th>
-                  <th>Etkin</th>
+                  <th className="num">Etkin</th>
                 </tr>
               </thead>
               <tbody>
                 {(['planner', 'coder', 'reviewer'] as AgentRole[]).map((role) => (
                   <tr key={role}>
-                    <td>{roleLabel(role)}</td>
-                    <td className="dim">{role === 'planner' ? 'görevi böler' : role === 'coder' ? 'diff önerir' : 'diff’i inceler'}</td>
+                    <td>
+                      <strong>{roleLabel(role)}</strong>
+                    </td>
                     <td>
                       <input
                         className="input"
                         list="provider-models"
-                        value={isDemo ? 'demo-planner' : settings.agents[role].model}
+                        value={settings.agents[role].model}
                         onChange={(event) => setAgentModel(role, event.target.value)}
-                        disabled={isDemo}
                         aria-label={`${roleLabel(role)} modeli`}
                         spellCheck={false}
                       />
                     </td>
-                    <td>
+                    <td className="num">
                       <input
                         type="checkbox"
                         checked={settings.agents[role].enabled}
@@ -199,9 +194,6 @@ export function SettingsView() {
                 ))}
               </tbody>
             </table>
-            <span className="field-hint" style={{ display: 'block', marginTop: 8 }}>
-              Rol değişikliği görev grafiğindeki ajan kartlarından yapılır; roller arasında yer değiştirme uygulanır.
-            </span>
           </section>
 
           <section className="panel panel-pad" aria-labelledby="context-title">
@@ -210,7 +202,7 @@ export function SettingsView() {
             </div>
             <div className="field">
               <label className="field-label" htmlFor="context-budget">
-                İstek başına bağlam bütçesi (yaklaşık token)
+                İstek başına bağlam bütçesi
               </label>
               <select
                 id="context-budget"
@@ -226,16 +218,15 @@ export function SettingsView() {
                 ))}
               </select>
               <span className="field-hint">
-                Bütçe aşılırsa eklenen parçalar sırayla atlanır ve arayüz kaç parçanın eklenmediğini bildirir.
+                Bütçe aşılırsa parçalar sırayla atlanır ve kaç parçanın eklenmediği bildirilir.
               </span>
             </div>
 
             <div className="note">
               <InfoIcon size={14} />
               <span>
-                Gizli dosyalar (nokta ile başlayanlar), .env dosyaları, anahtarlar, sertifikalar, ikili dosyalar ve
-                512 KB üzeri dosyalar ne indekslenir ne de AI bağlamına eklenir. Bu kural sabittir ve ayarla
-                kapatılamaz.
+                Gizli dosyalar, .env, anahtarlar, sertifikalar, ikili dosyalar ve 512 KB üzeri dosyalar ne indekslenir
+                ne de AI bağlamına eklenir.
               </span>
             </div>
           </section>
@@ -250,12 +241,11 @@ export function SettingsView() {
               <input type="checkbox" checked readOnly aria-label="Görev onayı her zaman açık" />
               <div>
                 <strong>Ajan görevleri için onay</strong>
-                <span>Her zaman açık: bir ajanın ürettiği yeni görev otomatik yürütülmez.</span>
+                <span>Bir ajanın ürettiği yeni görev otomatik yürütülmez.</span>
               </div>
             </div>
             <div className="toggle-row">
               <input
-                id="command-approval"
                 type="checkbox"
                 checked
                 disabled
@@ -264,14 +254,14 @@ export function SettingsView() {
               />
               <div>
                 <strong>Komut çalıştırma onayı</strong>
-                <span>Terminal komutları ve testler kullanıcı onayı olmadan çalışmaz; bu sürümde sabittir.</span>
+                <span>Terminal komutları ve testler onay olmadan çalışmaz.</span>
               </div>
             </div>
             <div className="note" style={{ marginTop: 10 }}>
               <InfoIcon size={14} />
               <span>
-                Değişiklikler hiçbir zaman sessizce yazılmaz; diff incelemesinde kabul ettiğiniz dosyalar diske
-                yazılır ve “Geri al” ile orijinal içerik geri yüklenir.
+                Değişiklikler sessizce yazılmaz; diff incelemesinde kabul ettiğiniz dosyalar diske yazılır ve “Geri
+                al” ile eski içerik geri yüklenir.
               </span>
             </div>
           </section>
@@ -300,19 +290,11 @@ export function SettingsView() {
                 </tr>
                 <tr>
                   <td>Ayrıştırıcı</td>
-                                      <td className="dim">{index?.parserNote ?? 'Henüz indekslenmedi.'}</td>
+                  <td className="dim">{index?.parserNote ?? 'Henüz indekslenmedi.'}</td>
                 </tr>
               </tbody>
             </table>
           </section>
-
-          <div className="note">
-            <ShieldIcon size={14} />
-            <span>
-              API anahtarı sohbete, günlüklere veya hata mesajlarına yazılmaz. Gizli dosyalar, .env, sertifikalar ve
-              512 KB üzeri dosyalar indekslenmez ve AI bağlamına gönderilmez.
-            </span>
-          </div>
         </div>
       </div>
     </div>

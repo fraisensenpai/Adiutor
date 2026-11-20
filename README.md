@@ -30,7 +30,7 @@
 
 Instead of one endless chat, work is split between three agents — a **planner**, a **coder** and a **reviewer**. Each hand-off is visible on a task graph, every proposed file change opens as a real diff, and every command waits for a click. Nothing is written, executed or sent anywhere behind your back.
 
-It runs entirely on your machine. The only network traffic is the one you explicitly configure — an OpenAI key you enter yourself. Without a key, a clearly labelled **demo mode** lets you try the whole workflow offline.
+It runs entirely on your machine. The only network traffic is the one you explicitly configure — requests to the provider whose key you enter yourself: **OpenAI**, **Anthropic Claude**, **DeepSeek** or **xAI Grok**.
 
 ## Why it feels different
 
@@ -86,7 +86,7 @@ It runs entirely on your machine. The only network traffic is the one you explic
 - Project-aware conversation beside the editor
 - Visible context chips and a token budget
 - Persisted history with a one-click clear
-- Demo and live providers always labelled
+- Provider and model always visible in the header
 
 </td><td valign="top">
 
@@ -130,21 +130,26 @@ npm run dev
 
 Windows, macOS and Linux are all supported. If npm blocks install scripts, the Electron binary may be missing on first launch — run `node node_modules/electron/install.js` once.
 
-### Your first task (no API key needed)
+### Add a provider key
+
+1. Open **Settings → Provider** and pick OpenAI, Claude, DeepSeek or Grok.
+2. Paste that provider's API key. It is encrypted with the OS keychain (DPAPI, Keychain, libsecret) and never written to the database, logs or chat.
+3. Choose a model (or type any model ID the provider supports), then pick a model per agent if you like.
+
+| Provider | Endpoint | Default model |
+|---|---|---|
+| OpenAI | `api.openai.com/v1` | `gpt-4.1-mini` |
+| Claude | `api.anthropic.com/v1/messages` | `claude-sonnet-4-5` |
+| DeepSeek | `api.deepseek.com/v1` | `deepseek-chat` |
+| Grok | `api.x.ai/v1` | `grok-4` |
+
+> Every request is made directly from the main process to the selected provider. No proxy, no account, no telemetry.
+
+### Your first task
 
 1. Click **Örnek projeyi aç** (*Open sample project*). A small TypeScript + Python project is generated in your app data folder.
 2. Open the task graph, type e.g. `Görev başlığını kısalt ve yardımcı fonksiyon ekle`, press **Görevi başlat**.
 3. Approve the planner's hand-off, approve the reviewer's `npm test` command, inspect the diff and accept it.
-
-Demo mode replies are deterministic and offline, and every message carries a `DEMO` badge.
-
-### Use a real model
-
-1. Open **Settings → Provider → OpenAI**.
-2. Paste an API key. It is encrypted with the OS keychain (DPAPI, Keychain, libsecret) and never written to the database, logs or chat.
-3. Pick a model per agent if you like, then run a task again.
-
-> Adiutor talks to `https://api.openai.com/v1` directly from the main process. No proxy, no account, no telemetry.
 
 ## How it works
 
@@ -159,7 +164,7 @@ graph LR
 - **Renderer** (React + zustand) owns the UI and the task runner; it never touches Node APIs directly.
 - **Main process** (Electron) owns the filesystem, the index, SQLite, the OS keychain, the terminal and the provider calls, exposed through a typed `contextBridge` API.
 - **Indexer** parses files with `web-tree-sitter` (TypeScript, TSX, JS, JSX, Python) and falls back to a regex extractor, saying so in the UI, when a grammar cannot load.
-- **Providers** are a small adapter registry: `demo` (offline) and `openai` (chat completions with a JSON contract). A failed contract is reported as an error, never silently retried with made-up data.
+- **Providers** are a small adapter registry: one OpenAI-compatible chat-completions adapter shared by OpenAI, DeepSeek and Grok, plus a dedicated Anthropic Messages adapter for Claude. A failed JSON contract is reported as an error, never silently retried with made-up data.
 
 ```
 electron/        main process: window, IPC, workspace, indexer, db, secrets, terminal, lsp
@@ -215,7 +220,7 @@ Adiutor (Latince *yardımcı*), tek bir fikrin etrafında kuruldu: kod yazan yap
 
 Sonsuz bir sohbet yerine iş üç ajana bölünür: **planlayıcı**, **kodlayıcı** ve **inceleyici**. Her görev devri görev grafiğinde görünür, her dosya değişikliği gerçek bir diff olarak açılır ve her komut senin onayını bekler. Hiçbir şey arka planda yazılmaz, çalıştırılmaz veya bir yere gönderilmez.
 
-Uygulama tamamen kendi bilgisayarında çalışır. Tek ağ trafiği, kendi girdiğin OpenAI anahtarıyladır. Anahtar yoksa açıkça etiketlenmiş **demo modu** ile tüm akışı çevrimdışı deneyebilirsin.
+Uygulama tamamen kendi bilgisayarında çalışır. Tek ağ trafiği, kendi girdiğin sağlayıcı anahtarıyladır: **OpenAI**, **Anthropic Claude**, **DeepSeek** veya **xAI Grok**.
 
 ## Neler yapıyor?
 
@@ -223,7 +228,7 @@ Uygulama tamamen kendi bilgisayarında çalışır. Tek ağ trafiği, kendi gird
 - **Ajanlar:** planlayıcı → kodlayıcı → inceleyici grafiği; her kartta ad (düzenlenebilir), rol (değiştirilebilir), model, durum, adımlar ve yaklaşık token; görevi başlat/durdur.
 - **İnceleme:** her değişiklik dosyanın tamamının satır diff’i olarak gösterilir; kabul, red, geri al, tümünü kabul/red. Onay olmadan tek bayt yazılmaz. Komut ve testler onay kartıyla çalışır.
 - **Proje haritası:** Tree-sitter (WASM) ile fonksiyon, sınıf, tür, değişken ve import çıkarımı; tanım–kullanım ilişkileri; tek tıkla AI bağlamına ekleme; dosya izleyiciyle artımlı güncelleme. Gramer yüklenemezse bunu açıkça söyleyip regex yedeğine düşer.
-- **Sohbet:** proje özeti ve seçtiğin bağlamla çalışan sağ panel; göndermeden önce **bağlamı görüntüle** (parça, dosya yolu, token); kalıcı geçmiş ve tek tıkla temizleme; demo/gerçek sağlayıcı her zaman etiketli.
+- **Sohbet:** proje özeti ve seçtiğin bağlamla çalışan sağ panel; göndermeden önce **bağlamı görüntüle** (parça, dosya yolu, token); kalıcı geçmiş ve tek tıkla temizleme; etkin sağlayıcı ve model başlıkta görünür.
 - **Kullanım:** her istek SQLite’a yazılır; sağlayıcı, ajan ve görev bazında özet; “ölçülen” ve “tahmini” ayrı gösterilir; uydurma kota göstergesi yoktur.
 - **Güvenlik:** anahtarlar işletim sistemi kasasında (DPAPI / Keychain / libsecret) şifreli tutulur, arayüze geri verilmez; gizli dosyalar, `.env`, anahtarlar, sertifikalar, ikili ve 512 KB üzeri dosyalar indekslenmez ve modele gönderilmez; modelden gelen yollar proje köküne hapsedilir (`..`, mutlak yol ve dışarı çıkma reddedilir).
 
@@ -238,11 +243,12 @@ npm install
 npm run dev
 ```
 
+- **Ayarlar → Sağlayıcı** bölümünden OpenAI, Claude, DeepSeek veya Grok seçip anahtarını gir. Model seçimini ajan bazında değiştirebilirsin.
 - **Örnek projeyi aç** ile küçük bir TypeScript + Python projesi oluşturulur.
 - Görev grafiğinde bir görev yaz (örn. `Görev başlığını kısalt ve yardımcı fonksiyon ekle`), **Görevi başlat**.
 - Planlayıcının devrini onayla, inceleyicinin `npm test` komutunu onayla, diff’i incele ve kabul et.
 
-Gerçek model için **Ayarlar → Sağlayıcı → OpenAI** bölümüne anahtarını gir; model seçimini ajan bazında değiştirebilirsin. Anahtar yalnızca işletim sistemi kasasında saklanır; veritabanına, loglara veya sohbete yazılmaz.
+Anahtar yalnızca işletim sistemi kasasında şifreli saklanır; veritabanına, loglara veya sohbete yazılmaz.
 
 ## Komutlar
 

@@ -16,9 +16,10 @@ import type {
   ChatMessage,
   CompletionRequest,
   ContextRequest,
+  ProviderId,
   UsageRecord,
 } from '../src/shared/types';
-import { estimateTokens } from '../src/shared/tokens';
+import { isProviderId } from '../src/shared/settings';
 import {
   appendChatMessage,
   clearChatMessages,
@@ -40,7 +41,7 @@ import {
   keyStorageLabel,
   setApiKey,
 } from './services/secrets';
-import { getAdapter, ProviderFailure, providerStatus } from './services/providers';
+import { getAdapter, ProviderFailure, providerInfos, providerStatus } from './services/providers';
 import { projectIndex } from './services/indexer';
 import { lspClient } from './services/lsp';
 import { TerminalService } from './services/terminal';
@@ -342,7 +343,7 @@ function registerIpc(): void {
     inFlight.set(request.requestId, controller);
     try {
       const result = await adapter.complete(request, {
-        apiKey: adapter.info.requiresApiKey ? getApiKey('openai') : null,
+        apiKey: adapter.info.requiresApiKey ? getApiKey(request.provider) : null,
         signal: controller.signal,
       });
       return result;
@@ -361,8 +362,13 @@ function registerIpc(): void {
     inFlight.delete(requestId);
   });
 
-  ipcMain.handle(IPC.secretSet, async (_event, apiKey: string) => setApiKey('openai', apiKey));
-  ipcMain.handle(IPC.secretClear, async () => clearApiKey('openai'));
+  ipcMain.handle(IPC.secretSet, async (_event, provider: ProviderId, apiKey: string) => {
+    if (!isProviderId(provider)) return { ok: false, error: 'Bilinmeyen sağlayıcı.' };
+    return setApiKey(provider, apiKey);
+  });
+  ipcMain.handle(IPC.secretClear, async (_event, provider: ProviderId) => {
+    if (isProviderId(provider)) clearApiKey(provider);
+  });
 
   /* ---------------------------- kullanım ---------------------------- */
   ipcMain.handle(IPC.usageList, async () => listUsage());
@@ -389,6 +395,80 @@ function registerIpc(): void {
   );
 }
 
+/**
+ * Smoke testi, gerçek adaptörü ağ olmadan sürer: yalnızca smoke sürecinde
+ * OpenAI uç noktasına giden istekler yerel olarak yanıtlanır. Kullanıcı
+ * akışında görünmez; uygulama kodu değişmez.
+ */
+function installSmokeFetch(): void {
+  const realFetch = globalThis.fetch.bind(globalThis);
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (!url.includes('api.openai.com')) return realFetch(input, init);
+
+    const body = JSON.parse(String(init?.body ?? '{}')) as {
+      messages?: Array<{ role: string; content: string }>;
+    };
+    const system = body.messages?.find((message) => message.role === 'system')?.content ?? '';
+    const user = body.messages?.find((message) => message.role === 'user')?.content ?? '';
+
+    let content = 'Smoke yanıtı.';
+    if (system.includes('Planlayıcı ajan')) {
+      content = JSON.stringify({
+        summary: 'Smoke testi için plan hazırlandı.',
+        steps: [
+          { title: 'Bağlamı çıkar', detail: 'İndeks özeti okunur.' },
+          { title: 'Kodu değiştir', detail: 'Diff önerisi üretilir.' },
+        ],
+        assignments: [
+          {
+            role: 'coder',
+            title: 'Smoke: yardımcı fonksiyon ekle',
+            instructions: 'Bağlamdaki ilk dosyaya küçük bir yardımcı fonksiyon ekle.',
+          },
+        ],
+      });
+    } else if (system.includes('Kodlayıcı ajan')) {
+      const jsonStart = user.indexOf('BAĞLAM (JSON):');
+      const raw = jsonStart >= 0 ? user.slice(jsonStart + 'BAĞLAM (JSON):'.length).trim() : '{}';
+      let file: { path?: string; content?: string } = {};
+      try {
+        const parsed = JSON.parse(raw) as { files?: Array<{ path?: string; content?: string }> };
+        file = parsed.files?.[0] ?? {};
+      } catch {
+        file = {};
+      }
+      content = JSON.stringify({
+        summary: 'Smoke testi: tek dosyada küçük bir ekleme önerildi.',
+        changes: file.path
+          ? [
+              {
+                filePath: file.path,
+                newContent: `${file.content ?? ''}\n\nexport function smokeYardimcisi(value: string): string {\n  return value.trim();\n}\n`,
+                summary: 'Smoke yardımcı fonksiyonu eklendi.',
+              },
+            ]
+          : [],
+      });
+    } else if (system.includes('İnceleyici ajan')) {
+      content = JSON.stringify({
+        verdict: 'onayla',
+        notes: 'Smoke incelemesi: değişiklik kapsamı dar ve geri alınabilir.',
+        issues: [],
+        command: { command: 'echo adiutor-smoke-ok', reason: 'Değişikliği doğrulamak için.' },
+      });
+    }
+
+    return new Response(
+      JSON.stringify({
+        choices: [{ message: { content }, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 120, completion_tokens: 60, total_tokens: 180 },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }) as typeof fetch;
+}
+
 async function runSmoke(window: BrowserWindow, depth: 'basic' | 'deep'): Promise<void> {
   const outDir = path.join(app.getAppPath(), '.smoke');
   await fs.promises.mkdir(outDir, { recursive: true });
@@ -412,49 +492,17 @@ async function runSmoke(window: BrowserWindow, depth: 'basic' | 'deep'): Promise
     });
     console.log(`[smoke] bağlam: ${context.items.length} parça, ~${context.totalTokens} token`);
 
-    const demo = getAdapter('demo');
-    const completion = await demo.complete(
-      {
-        requestId: 'smoke-plan',
-        provider: 'demo',
-        model: 'demo-planner',
-        purpose: 'plan',
-        jsonMode: true,
-        messages: [
-          {
-            role: 'user',
-            content: JSON.stringify({
-              purpose: 'plan',
-              task: 'Görev başlığını kısalt',
-              files: snapshot.files.slice(0, 2).map((file) => ({ path: file.path, content: 'x' })),
-            }),
-          },
-        ],
-      },
-      { apiKey: null, signal: new AbortController().signal },
-    );
-    console.log(`[smoke] demo plan yanıtı: ${completion.text.length} karakter, tahmini=${completion.usage.estimated}`);
-
-    insertUsage({
-      id: `smoke-${Date.now()}`,
-      taskId: 'smoke-task',
-      taskLabel: 'Smoke testi',
-      agentRole: 'planner',
-      provider: 'demo',
-      model: 'demo-planner',
-      promptTokens: completion.usage.promptTokens,
-      completionTokens: completion.usage.completionTokens,
-      totalTokens: completion.usage.totalTokens,
-      estimated: true,
-      purpose: 'plan',
-      createdAt: Date.now(),
-    });
+    installSmokeFetch();
     const summary = usageSummary();
-    console.log(`[smoke] kullanım kaydı: ${summary.requestCount} istek, ${summary.totalTokens} token (tahmini)`);
+    console.log(`[smoke] kayıtlı kullanım: ${summary.requestCount} istek, ${summary.totalTokens} token`);
+    console.log(
+      `[smoke] sağlayıcılar: ${providerInfos()
+        .map((provider) => `${provider.id}=${getApiKey(provider.id) ? 'anahtarlı' : 'anahtarsız'}`)
+        .join(', ')}`,
+    );
     console.log(`[smoke] sqlite: ${databaseFilePath()}`);
     console.log(`[smoke] güvenli kasa: ${encryptionAvailable() ? 'kullanılabilir' : 'kullanılamıyor'} (${keyStorageLabel()})`);
-    console.log(`[smoke] api anahtarı kayıtlı: ${hasApiKey('openai')}`);
-    console.log(`[smoke] token tahmini kontrolü: ${estimateTokens('1234')} ≈ 1`);
+    console.log(`[smoke] openai anahtarı kayıtlı: ${hasApiKey('openai')}`);
 
     const commandResult = await terminal.runOnce(info.root, "echo adiutor-smoke-ok");
     console.log(
@@ -615,6 +663,7 @@ async function bootstrap(): Promise<void> {
   mainWindow = createWindow();
 
   if (smokeMode) {
+    await setApiKey('openai', 'sk-smoke-test-key');
     mainWindow.webContents.once('did-finish-load', () => {
       void runSmoke(mainWindow!, smokeMode === 'deep' ? 'deep' : 'basic').catch((error: Error) => {
         console.error('[smoke] hata:', error.message);

@@ -214,7 +214,7 @@ export function workspaceInfo(root: string): WorkspaceInfo {
 }
 
 /* ------------------------------------------------------------------ */
-/* Örnek proje (demo akışını anında denemek için)                      */
+/* Örnek proje (ajan akışını anında denemek için)                      */
 /* ------------------------------------------------------------------ */
 
 const SAMPLE_FILES: Record<string, string> = {
@@ -222,7 +222,7 @@ const SAMPLE_FILES: Record<string, string> = {
   "name": "adiutor-ornek-proje",
   "private": true,
   "version": "1.0.0",
-  "description": "Adiutor demo akışını denemek için hazırlanmış küçük bir proje",
+  "description": "Adiutor ajan akışını denemek için hazırlanmış küçük bir proje",
   "type": "module",
   "scripts": {
     "test": "node tests/tasks.test.mjs"
@@ -231,9 +231,9 @@ const SAMPLE_FILES: Record<string, string> = {
 `,
   'README.md': `# Örnek Proje
 
-Bu klasör, **Adiutor**'un demo modunu gerçek dosyalar üzerinde denemek için
+Bu klasör, **Adiutor**'un ajan akışını gerçek dosyalar üzerinde denemek için
 otomatik oluşturuldu. Değişiklikler gerçek dosyalara yazılır; istediğiniz zaman
-**Değişiklikleri geri al** ile eski haline döndürebilirsiniz.
+**Geri al** ile eski haline döndürebilirsiniz.
 
 Dosyalar:
 
@@ -322,7 +322,7 @@ export function formatDuration(ms: number): string {
 import { TaskStore, countByStatus } from '../src/tasks.ts';
 
 const store = new TaskStore();
-const first = store.add('İlk görev', ['demo']);
+const first = store.add('İlk görev', ['tasarım']);
 store.add('İkinci görev');
 
 assert.equal(store.all().length, 2, 'iki görev eklenmeli');

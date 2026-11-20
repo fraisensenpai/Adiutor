@@ -2,7 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { app } from 'electron';
 import type { AppSettings, UsageRecord, UsageSummary, ChatMessage } from '../../src/shared/types';
-import { DEFAULT_SETTINGS } from '../../src/shared/settings';
+import { DEFAULT_SETTINGS, DEFAULT_MODEL, isProviderId } from '../../src/shared/settings';
 
 /**
  * Yerel veri katmanı.
@@ -92,10 +92,22 @@ export function getSettings(): AppSettings {
   if (!stored) return DEFAULT_SETTINGS;
   try {
     const parsed = JSON.parse(stored) as Partial<AppSettings>;
+    // Eski sürümlerde kaldırılmış sağlayıcı kimlikleri kalmış olabilir.
+    const provider = isProviderId(parsed.provider) ? parsed.provider : DEFAULT_SETTINGS.provider;
+    const staleModel = !parsed.model || !isProviderId(parsed.provider);
+    const agents = { ...DEFAULT_SETTINGS.agents, ...(parsed.agents ?? {}) };
     return {
       ...DEFAULT_SETTINGS,
       ...parsed,
-      agents: { ...DEFAULT_SETTINGS.agents, ...(parsed.agents ?? {}) },
+      provider,
+      model: staleModel ? DEFAULT_MODEL : parsed.model!,
+      agents: staleModel
+        ? {
+            planner: { ...agents.planner, model: DEFAULT_MODEL },
+            coder: { ...agents.coder, model: DEFAULT_MODEL },
+            reviewer: { ...agents.reviewer, model: DEFAULT_MODEL },
+          }
+        : agents,
     };
   } catch {
     return DEFAULT_SETTINGS;

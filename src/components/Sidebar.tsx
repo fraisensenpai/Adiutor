@@ -18,7 +18,6 @@ export function Sidebar() {
   const refreshTree = useStore((state) => state.refreshTree);
   const refreshIndex = useStore((state) => state.refreshIndex);
   const openFolderDialog = useStore((state) => state.openFolderDialog);
-  const openSample = useStore((state) => state.openSample);
   const setView = useStore((state) => state.setView);
   const openFile = useStore((state) => state.openFile);
   const addSymbolToContext = useStore((state) => state.addSymbolToContext);
@@ -94,17 +93,7 @@ export function Sidebar() {
 
       <div className="sidebar-body">
         {!workspace ? (
-          <div className="tree-empty">
-            <p style={{ marginTop: 4 }}>Görev vermek ve kodu düzenlemek için bir proje klasörü açın.</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
-              <button type="button" className="button button-small" onClick={() => void openFolderDialog()}>
-                Proje klasörü aç
-              </button>
-              <button type="button" className="button button-ghost button-small" onClick={() => void openSample()}>
-                Örnek projeyi aç
-              </button>
-            </div>
-          </div>
+          <div className="tree-empty">Proje açılmadı.</div>
         ) : sidebarTab === 'files' ? (
           treeLoading ? (
             <div className="tree-empty">Dosya ağacı okunuyor…</div>
