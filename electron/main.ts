@@ -181,6 +181,7 @@ function createWindow(): BrowserWindow {
     minHeight: 680,
     backgroundColor: '#0c0e12',
     title: 'Adiutor',
+    icon: path.join(__dirname, '..', 'build', 'icon.png'),
     show: false,
     autoHideMenuBar: true,
     webPreferences: {
@@ -603,6 +604,7 @@ async function runSmoke(window: BrowserWindow, depth: 'basic' | 'deep'): Promise
 
 async function bootstrap(): Promise<void> {
   app.setName('Adiutor');
+  app.setAppUserModelId('com.adiutor.app');
   initDatabase();
   await initEncryption();
   registerAppProtocol();

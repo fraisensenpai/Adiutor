@@ -3,8 +3,25 @@
   "productName": "Adiutor",
   "version": "0.1.0",
   "private": true,
-  "description": "Adiutor — yapay zekâ ajanlarıyla çalışan, tamamen yerel masaüstü kod editörü",
+  "description": "Local-first desktop code editor with an AI agent task graph (planner, coder, reviewer), explicit diff approvals and an offline demo mode.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fraisensenpai/Adiutor.git"
+  },
+  "homepage": "https://github.com/fraisensenpai/Adiutor#readme",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "keywords": [
+    "electron",
+    "code-editor",
+    "ai-agents",
+    "local-first",
+    "monaco",
+    "tree-sitter",
+    "typescript"
+  ],
   "main": "dist-electron/main.cjs",
   "type": "module",
   "scripts": {

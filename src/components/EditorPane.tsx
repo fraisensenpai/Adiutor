@@ -1,8 +1,9 @@
 import { useStore } from '@/state/store';
 import { MonacoEditor } from './MonacoEditor';
 import { EmptyState, IconButton } from './ui/primitives';
-import { CodeIcon, FolderIcon, PlusIcon, UploadIcon, XIcon, AlertIcon } from './ui/Icons';
+import { FolderIcon, PlusIcon, UploadIcon, XIcon, AlertIcon } from './ui/Icons';
 import { basename, dirname, languageLabel, relativeTo } from '@/lib/format';
+import logo from '@/assets/logo-mark.png';
 
 function TabStrip() {
   const tabs = useStore((state) => state.tabs);
@@ -134,7 +135,7 @@ export function EditorPane() {
         ) : (
           <div className="empty-full">
             <EmptyState
-              icon={<CodeIcon size={20} />}
+              icon={<img className="empty-logo" src={logo} alt="" aria-hidden="true" />}
               title={workspace ? 'Bir dosya seçin' : 'Adiutor ile kod yazmaya başlayın'}
               description={
                 workspace

@@ -11,6 +11,7 @@ import {
 } from './ui/Icons';
 import { Badge, IconButton } from './ui/primitives';
 import { basename } from '@/lib/format';
+import logo from '@/assets/logo-mark.png';
 
 const VIEWS: Array<{ id: ViewId; label: string; icon: typeof CodeIcon }> = [
   { id: 'editor', label: 'Editör', icon: CodeIcon },
@@ -40,9 +41,7 @@ export function TitleBar() {
   return (
     <header className="titlebar">
       <div className="brand">
-        <span className="brand-mark" aria-hidden="true">
-          A
-        </span>
+        <img className="brand-mark" src={logo} alt="" width={24} height={24} aria-hidden="true" />
         <div>
           <div className="brand-name">Adiutor</div>
           <span className="brand-sub">AI kod editörü</span>
