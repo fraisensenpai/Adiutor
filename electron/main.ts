@@ -543,6 +543,15 @@ async function runSmoke(window: BrowserWindow, depth: 'basic' | 'deep'): Promise
 
     const reviewReady = await waitFor('.titlebar button', 'Değişiklikleri incele', 15000);
     console.log(`[smoke] diff hazır: ${reviewReady}`);
+
+    const remainingMessages = (await window.webContents.executeJavaScript(`(async () => {
+      await window.adiutor.chat.clear();
+      const messages = await window.adiutor.chat.load();
+      return messages.length;
+    })()`)) as number;
+    console.log(
+      `[smoke] sohbet temizleme: ${remainingMessages === 0 ? 'çalışıyor' : `başarısız (${remainingMessages} mesaj kaldı)`}`,
+    );
     await capture('app-chat.png');
 
     if (reviewReady) {
