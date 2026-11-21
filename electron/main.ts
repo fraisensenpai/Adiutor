@@ -344,6 +344,7 @@ function registerIpc(): void {
     try {
       const result = await adapter.complete(request, {
         apiKey: adapter.info.requiresApiKey ? getApiKey(request.provider) : null,
+        hasStoredKey: adapter.info.requiresApiKey ? hasApiKey(request.provider) : false,
         signal: controller.signal,
       });
       return result;

@@ -16,6 +16,11 @@ export function UsageView() {
     void refreshUsage();
   }, [refreshUsage]);
 
+  // Eski kayıtlarda kaldırılmış sağlayıcı kimlikleri olabilir; etiket bilinmiyorsa
+  // ham kimlik yerine okunur bir ad gösterilir.
+  const providerLabel = (id: string): string =>
+    providerStatus?.providers.find((item) => item.id === id)?.label ?? id;
+
   const maxProvider = Math.max(1, ...(summary?.byProvider.map((item) => item.tokens) ?? [1]));
   const maxAgent = Math.max(1, ...(summary?.byAgent.map((item) => item.tokens) ?? [1]));
 
@@ -117,7 +122,7 @@ export function UsageView() {
                           </td>
                           <td>{record.agentRole}</td>
                           <td>
-                            {record.provider} · {record.model}
+                            {providerLabel(record.provider)} · {record.model}
                           </td>
                           <td className="num">{formatTokens(record.totalTokens)}</td>
                           <td>
@@ -137,7 +142,7 @@ export function UsageView() {
                 <div className="bar-list">
                   {summary.byProvider.map((item) => (
                     <div className="bar-row" key={item.provider}>
-                      <span>{item.provider}</span>
+                      <span>{providerLabel(item.provider)}</span>
                       <div className="bar-track">
                         <div className="bar-fill" style={{ width: `${(item.tokens / maxProvider) * 100}%` }} />
                       </div>

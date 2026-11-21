@@ -54,7 +54,9 @@ export function waitFor(ms: number, signal: AbortSignal): Promise<void> {
 async function quotaExhausted(response: Response): Promise<boolean> {
   try {
     const body = await response.clone().text();
-    return /insufficient_quota|billing_hard_limit|credit balance is too low/i.test(body);
+    return /insufficient_quota|billing_hard_limit|credit_balance_exhausted|credit balance is too low|no credits remaining/i.test(
+      body,
+    );
   } catch {
     return false;
   }

@@ -43,9 +43,10 @@ function errorMessage(status: number, detail: string, retryAfter: number | null 
       return 'Bu anahtarın seçilen Claude modeli için erişim yetkisi yok.';
     case 404:
       return 'Seçilen Claude modeli bulunamadı. Ayarlardan geçerli bir model kimliği seçin.';
+    case 402:
     case 429:
-      if (/credit balance is too low|billing/i.test(detail)) {
-        return 'Claude kullanım kotası doldu. Anthropic hesabınızda kredi ve faturalandırma ayarlarını kontrol edin.';
+      if (/credit balance is too low|credit_balance_exhausted|billing/i.test(detail)) {
+        return 'Claude kullanım kotası doldu: hesapta kullanılabilir kredi yok. Anthropic panelinizden kredi ekleyin veya faturalandırmayı kontrol edin.';
       }
       return `Anthropic istek sınırı aşıldı.${
         retryAfter ? ` Yaklaşık ${retryAfter} saniye sonra` : ' Kısa bir süre sonra'
@@ -67,7 +68,9 @@ export const anthropicProvider: ProviderAdapter = {
   async complete(request, context: ProviderContext): Promise<CompletionResult> {
     if (!context.apiKey) {
       throw new ProviderFailure(
-        'Claude API anahtarı ayarlanmamış. Ayarlar → Sağlayıcı bölümünden anahtar ekleyin.',
+        context.hasStoredKey
+          ? 'Claude anahtarı kayıtlı görünüyor ama işletim sistemi kasasından okunamadı. Ayarlar → Sağlayıcı bölümünden anahtarı yeniden kaydedin.'
+          : 'Claude API anahtarı ayarlanmamış. Ayarlar → Sağlayıcı bölümünden anahtar ekleyin.',
         'missing-key',
       );
     }

@@ -1,7 +1,7 @@
 {
   "name": "adiutor",
   "productName": "Adiutor",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "Local-first desktop code editor with an AI agent task graph (planner, coder, reviewer), explicit diff approvals and support for OpenAI, Claude, DeepSeek and Grok.",
   "license": "MIT",

@@ -99,7 +99,12 @@ export function getApiKey(provider: ProviderId): string | null {
   if (!encoded) return null;
   try {
     return safeStorage.decryptString(Buffer.from(encoded, 'base64'));
-  } catch {
+  } catch (error) {
+    // Anahtarın kendisi loglanmaz; yalnızca çözme hatası bildirilir.
+    console.error(
+      `[secrets] ${provider} anahtarı çözülemedi:`,
+      error instanceof Error ? error.message : String(error),
+    );
     return null;
   }
 }

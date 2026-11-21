@@ -194,10 +194,11 @@ Adiutor is built for code you would not paste into a website.
 | `npm run build` | Production renderer (`dist/`) and main process (`dist-electron/`) |
 | `npm run typecheck` | TypeScript for renderer and main, no emit |
 | `npm run smoke` | End-to-end check in an isolated profile with a hidden window; writes screenshots to `.smoke/` |
+| `npm run dist:win` | Builds the single-file Windows app to `release/Adiutor-<version>.exe` |
 
 ## Known limitations
 
-- **No installer yet.** Run from source; packaging (`.exe`, `.dmg`, `.AppImage`) is not included.
+- **Unsigned portable build.** `npm run dist:win` produces a single-file `release/Adiutor-<version>.exe` that runs without installing anything. It is not code-signed, so Windows SmartScreen shows an unknown-publisher warning on first launch. macOS and Linux packaging is not configured yet.
 - **LSP is optional.** If `typescript-language-server` is on `PATH`, diagnostics appear in the Problems panel; otherwise the panel says so. Nothing is installed automatically.
 - **No PTY.** The terminal runs commands and captures output; full-screen programs such as `vim` or `top` will not work.
 - **Index is per session.** It is rebuilt when a project opens; changes are applied incrementally while the app runs.
@@ -259,10 +260,11 @@ Anahtar yalnızca işletim sistemi kasasında şifreli saklanır; veritabanına,
 | `npm run build` | Üretim derlemesi (`dist/`, `dist-electron/`) |
 | `npm run typecheck` | Arayüz ve ana süreç için TypeScript denetimi |
 | `npm run smoke` | Ayrı profilde, görünmez pencerede uçtan uca test; ekran görüntüleri `.smoke/` |
+| `npm run dist:win` | `release/Adiutor-<sürüm>.exe` tek dosya Windows uygulamasını üretir |
 
 ## Bilinen sınırlamalar
 
-- **Paketleme yok:** uygulama kaynak ağacından çalışır; `.exe` / `.dmg` üretimi bu sürümde yok.
+- **İmzasız taşınabilir sürüm:** `npm run dist:win` kurulum gerektirmeyen tek dosya `release/Adiutor-<sürüm>.exe` üretir. Kod imzası olmadığı için ilk açılışta Windows SmartScreen “bilinmeyen yayıncı” uyarısı verir; macOS ve Linux paketlemesi henüz tanımlı değil.
 - **LSP isteğe bağlı:** `typescript-language-server` kuruluysa tanılamalar gelir, değilse panel bunu söyler; otomatik kurulum yapılmaz.
 - **PTY yok:** terminal komut çalıştırıp çıktıyı yakalar; `vim`, `top` gibi tam ekran programlar çalışmaz.
 - **İndeks oturum içidir:** proje açıldığında taranır, çalışma sırasında artımlı güncellenir.

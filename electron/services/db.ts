@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { app } from 'electron';
 import type { AppSettings, UsageRecord, UsageSummary, ChatMessage } from '../../src/shared/types';
 import { DEFAULT_SETTINGS, DEFAULT_MODEL, isProviderId } from '../../src/shared/settings';
+import { stripInvokePrefix } from '../../src/shared/errors';
 
 /**
  * Yerel veri katmanı.
@@ -275,7 +276,8 @@ export function loadChatMessages(limit = 200): ChatMessage[] {
       ...meta,
       id: row.id,
       role: row.role as ChatMessage['role'],
-      content: row.content,
+      // Eski sürümlerde kaydedilmiş IPC sarmalayıcısı geçmişte görünmesin.
+      content: stripInvokePrefix(row.content),
       createdAt: Number(row.created_at),
       agentRole: (row.agent_role as ChatMessage['agentRole']) ?? undefined,
       pending: false,

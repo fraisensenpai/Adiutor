@@ -52,8 +52,14 @@ function errorMessage(
     case 404:
       return `Seçilen model ${label} üzerinde bulunamadı. Ayarlardan geçerli bir model kimliği seçin.`;
     case 429:
-      if (/insufficient_quota|billing_hard_limit/i.test(`${code} ${detail}`)) {
-        return `${label} kullanım kotası doldu. Sağlayıcı hesabınızda kredi ve faturalandırma ayarlarını kontrol edin.`;
+      // Sağlayıcılar aynı durumu farklı alanlarda bildirir: `type` alanında
+      // insufficient_quota, `code` alanında credit_balance_exhausted gibi.
+      if (
+        /insufficient_quota|billing_hard_limit|credit_balance_exhausted|no credits remaining/i.test(
+          `${code} ${detail}`,
+        )
+      ) {
+        return `${label} kullanım kotası doldu: hesapta kullanılabilir kredi yok. Sağlayıcı panelinizden kredi ekleyin veya faturalandırmayı kontrol edin.`;
       }
       return `${label} istek sınırı aşıldı.${
         retryAfter ? ` Yaklaşık ${retryAfter} saniye sonra` : ' Kısa bir süre sonra'
@@ -86,7 +92,9 @@ export function createChatCompletionsProvider(config: ChatCompletionsConfig): Pr
     async complete(request, context: ProviderContext): Promise<CompletionResult> {
       if (!context.apiKey) {
         throw new ProviderFailure(
-          `${config.label} API anahtarı ayarlanmamış. Ayarlar → Sağlayıcı bölümünden anahtar ekleyin.`,
+          context.hasStoredKey
+            ? `${config.label} anahtarı kayıtlı görünüyor ama işletim sistemi kasasından okunamadı. Ayarlar → Sağlayıcı bölümünden anahtarı yeniden kaydedin.`
+            : `${config.label} API anahtarı ayarlanmamış. Ayarlar → Sağlayıcı bölümünden anahtar ekleyin.`,
           'missing-key',
         );
       }
@@ -127,7 +135,7 @@ export function createChatCompletionsProvider(config: ChatCompletionsConfig): Pr
           try {
             const parsed = (await response.json()) as ChatResponse;
             detail = parsed.error?.message ?? '';
-            code = parsed.error?.code ?? parsed.error?.type ?? '';
+            code = [parsed.error?.code, parsed.error?.type].filter(Boolean).join(' ');
           } catch {
             detail = '';
           }
