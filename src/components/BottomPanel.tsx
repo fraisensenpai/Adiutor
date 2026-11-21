@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useStore } from '@/state/store';
 import { bridge } from '@/lib/bridge';
 import { formatTime, truncate } from '@/lib/format';
@@ -198,7 +198,7 @@ function ProblemsView() {
   );
 }
 
-export function BottomPanel() {
+export function BottomPanel({ onResizeStart }: { onResizeStart: (event: ReactPointerEvent<HTMLDivElement>) => void }) {
   const bottomOpen = useStore((state) => state.bottomOpen);
   const bottomTab = useStore((state) => state.bottomTab);
   const setBottomTab = useStore((state) => state.setBottomTab);
@@ -208,6 +208,15 @@ export function BottomPanel() {
 
   return (
     <section className={`bottom-panel ${bottomOpen ? '' : 'is-collapsed'}`} aria-label="Alt panel">
+      {bottomOpen ? (
+        <div
+          className="bottom-resizer"
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Alt panel yüksekliği"
+          onPointerDown={onResizeStart}
+        />
+      ) : null}
       <div className="panel-header">
         <button
           type="button"

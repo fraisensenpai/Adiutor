@@ -808,7 +808,17 @@ export const useStore = create<AppStore>()((set, get) => ({
       });
       void get().refreshTree();
       if (!get().changes.some((item) => item.status === 'pending')) {
-        set({ task: { ...get().task, status: 'done' } });
+        set({
+          task: { ...get().task, status: 'done' },
+          agents: {
+            ...get().agents,
+            reviewer: {
+              ...get().agents.reviewer,
+              status: 'done',
+              lastMessage: 'Tüm değişiklikler incelendi.',
+            },
+          },
+        });
       }
       get().notify(`${basename(change.filePath)} güncellendi.`, 'success');
     } catch (error) {
@@ -829,7 +839,17 @@ export const useStore = create<AppStore>()((set, get) => ({
       ),
     });
     if (!get().changes.some((item) => item.status === 'pending')) {
-      set({ task: { ...get().task, status: 'done' } });
+      set({
+        task: { ...get().task, status: 'done' },
+        agents: {
+          ...get().agents,
+          reviewer: {
+            ...get().agents.reviewer,
+            status: 'done',
+            lastMessage: 'Tüm değişiklikler incelendi.',
+          },
+        },
+      });
     }
   },
 
@@ -869,6 +889,14 @@ export const useStore = create<AppStore>()((set, get) => ({
         item.status === 'pending' ? { ...item, status: 'rejected' } : item,
       ),
       task: { ...get().task, status: 'done' },
+      agents: {
+        ...get().agents,
+        reviewer: {
+          ...get().agents.reviewer,
+          status: 'done',
+          lastMessage: 'Tüm değişiklikler incelendi.',
+        },
+      },
     });
   },
 

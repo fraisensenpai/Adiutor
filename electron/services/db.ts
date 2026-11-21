@@ -211,8 +211,9 @@ export function usageSummary(): UsageSummary {
     }));
   const byTask = database
     .all(
-      `SELECT task_id AS taskId, task_label AS label, COALESCE(SUM(total_tokens), 0) AS tokens, COUNT(*) AS requests
-       FROM usage_events GROUP BY task_id ORDER BY tokens DESC LIMIT 25`,
+      `SELECT MIN(task_id) AS taskId, task_label AS label, COALESCE(SUM(total_tokens), 0) AS tokens,
+              COUNT(*) AS requests
+       FROM usage_events GROUP BY task_label ORDER BY tokens DESC LIMIT 25`,
     )
     .map((row) => ({
       taskId: String(row.taskId),

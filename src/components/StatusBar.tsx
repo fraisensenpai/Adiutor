@@ -1,21 +1,18 @@
 import { useStore } from '@/state/store';
-import { formatTokens } from '@shared/tokens';
 import { taskStatusLabel } from '@/lib/format';
 
 export function StatusBar() {
   const workspace = useStore((state) => state.workspace);
   const index = useStore((state) => state.index);
   const indexProgress = useStore((state) => state.indexProgress);
-
   const task = useStore((state) => state.task);
-  const usageSummaryData = useStore((state) => state.usageSummaryData);
   const activePath = useStore((state) => state.activePath);
 
   const statusText =
     indexProgress.state === 'scanning'
       ? `İndeksleniyor ${indexProgress.scanned}/${indexProgress.total || '?'}`
       : indexProgress.state === 'ready'
-        ? `İndeks hazır · ${index?.files.length ?? 0} dosya · ${index?.symbols.length ?? 0} sembol`
+        ? `İndeks hazır · ${index?.files.length ?? 0} dosya`
         : indexProgress.state === 'error'
           ? 'İndeks hatası'
           : 'İndeks bekliyor';
@@ -47,20 +44,14 @@ export function StatusBar() {
       ) : null}
 
       <div className="statusbar-right">
-        {index ? (
-          <span className="status-item" title={index.parserNote}>
-            ayrıştırıcı: <strong>{index.parser === 'tree-sitter' ? 'tree-sitter' : 'yedek (regex)'}</strong>
+        <span className="status-item" title={index?.lsp.message ?? 'LSP durumu bilinmiyor'}>
+          LSP: <strong>{index?.lsp.running ? 'bağlı' : 'yok'}</strong>
+        </span>
+        {task.id ? (
+          <span className="status-item">
+            görev: <strong>{taskStatusLabel(task.status)}</strong>
           </span>
         ) : null}
-        <span className="status-item" title={index?.lsp.message ?? 'LSP durumu bilinmiyor'}>
-          LSP: <strong>{index?.lsp.running ? 'bağlı' : 'kullanılamıyor'}</strong>
-        </span>
-        <span className="status-item">
-          görev: <strong>{taskStatusLabel(task.status)}</strong>
-        </span>
-        <span className="status-item" title="Bu uygulamanın kaydettiği token kullanımı (tahmini + ölçülen)">
-          {formatTokens(usageSummaryData?.totalTokens ?? 0)} token
-        </span>
       </div>
     </footer>
   );

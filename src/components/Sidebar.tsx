@@ -5,7 +5,7 @@ import { FolderIcon, PlusIcon, RefreshIcon, SearchIcon, SplitIcon } from './ui/I
 import { IconButton } from './ui/primitives';
 import { basename } from '@/lib/format';
 
-export function Sidebar() {
+export function Sidebar({ open = true }: { open?: boolean }) {
   const sidebarTab = useStore((state) => state.sidebarTab);
   const setSidebarTab = useStore((state) => state.setSidebarTab);
   const tree = useStore((state) => state.tree);
@@ -41,6 +41,8 @@ export function Sidebar() {
 
   const progressPercent =
     indexProgress.total > 0 ? Math.round((indexProgress.scanned / indexProgress.total) * 100) : 0;
+
+  if (!open) return null;
 
   return (
     <aside className="sidebar" aria-label="Proje paneli">
@@ -92,9 +94,7 @@ export function Sidebar() {
       </div>
 
       <div className="sidebar-body">
-        {!workspace ? (
-          <div className="tree-empty">Proje açılmadı.</div>
-        ) : sidebarTab === 'files' ? (
+        {!workspace ? null : sidebarTab === 'files' ? (
           treeLoading ? (
             <div className="tree-empty">Dosya ağacı okunuyor…</div>
           ) : tree ? (
@@ -189,15 +189,6 @@ export function Sidebar() {
             <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
           </div>
         ) : null}
-        <div className="index-line" title={index?.parserNote}>
-          <span className="dim">
-            {index ? (index.parser === 'tree-sitter' ? 'Tree-sitter (WASM)' : 'Yedek çıkarım') : 'ayrıştırıcı yok'}
-            {index && index.skippedFiles > 0 ? ` · ${index.skippedFiles} atlandı` : ''}
-          </span>
-        </div>
-        <div className="index-line" title={index?.lsp.message ?? 'LSP durumu bilinmiyor'}>
-          <span className="dim">LSP: {index?.lsp.running ? index.lsp.server ?? 'bağlı' : 'kullanılamıyor'}</span>
-        </div>
       </div>
     </aside>
   );

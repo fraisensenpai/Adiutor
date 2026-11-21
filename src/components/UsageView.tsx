@@ -3,7 +3,7 @@ import { useStore } from '@/state/store';
 import { formatTokens } from '@shared/tokens';
 import { Badge, EmptyState, SectionTitle } from './ui/primitives';
 import { ChartIcon, InfoIcon, RefreshIcon } from './ui/Icons';
-import { formatDateTime } from '@/lib/format';
+import { formatDateTime, roleLabel } from '@/lib/format';
 
 export function UsageView() {
   const usage = useStore((state) => state.usage);
@@ -18,8 +18,18 @@ export function UsageView() {
 
   // Eski kayıtlarda kaldırılmış sağlayıcı kimlikleri olabilir; etiket bilinmiyorsa
   // ham kimlik yerine okunur bir ad gösterilir.
-  const providerLabel = (id: string): string =>
-    providerStatus?.providers.find((item) => item.id === id)?.label ?? id;
+  const agentLabel = (id: string): string => {
+    if (id === 'planner' || id === 'coder' || id === 'reviewer') return roleLabel(id);
+    if (id === 'chat') return 'Sohbet';
+    return id;
+  };
+
+  const providerLabel = (id: string): string => {
+    const known = providerStatus?.providers.find((item) => item.id === id)?.label;
+    if (known) return known;
+    if (id === 'demo') return 'Demo (eski kayıt)';
+    return id.charAt(0).toLocaleUpperCase('tr-TR') + id.slice(1);
+  };
 
   const maxProvider = Math.max(1, ...(summary?.byProvider.map((item) => item.tokens) ?? [1]));
   const maxAgent = Math.max(1, ...(summary?.byAgent.map((item) => item.tokens) ?? [1]));
@@ -120,7 +130,7 @@ export function UsageView() {
                           <td className="num" style={{ textAlign: 'left' }}>
                             {formatDateTime(record.createdAt)}
                           </td>
-                          <td>{record.agentRole}</td>
+                          <td>{agentLabel(record.agentRole)}</td>
                           <td>
                             {providerLabel(record.provider)} · {record.model}
                           </td>
@@ -157,7 +167,7 @@ export function UsageView() {
                 <div className="bar-list">
                   {summary.byAgent.map((item) => (
                     <div className="bar-row" key={item.agent}>
-                      <span>{item.agent}</span>
+                      <span>{agentLabel(item.agent)}</span>
                       <div className="bar-track">
                         <div
                           className="bar-fill"

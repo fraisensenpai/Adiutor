@@ -4,21 +4,10 @@ import { formatTokens } from '@shared/tokens';
 import type { AgentEdgeState, AgentNodeState, AgentRole } from '@shared/types';
 import { ApprovalList } from './ApprovalList';
 import { Badge, StatusDot } from './ui/primitives';
-import { PlayIcon, StopIcon } from './ui/Icons';
+import { CheckIcon, FolderIcon, PlayIcon, StopIcon } from './ui/Icons';
 import { formatTime, roleLabel, statusLabel, taskStatusLabel } from '@/lib/format';
 
 const ROLES: AgentRole[] = ['planner', 'coder', 'reviewer'];
-
-const CARD_POSITIONS: Record<AgentRole, { left: number; top: number }> = {
-  planner: { left: 24, top: 86 },
-  coder: { left: 396, top: 86 },
-  reviewer: { left: 768, top: 86 },
-};
-
-const EDGE_GEOMETRY: Record<string, { fromX: number; toX: number; y: number; labelX: number }> = {
-  'planner-coder': { fromX: 288, toX: 396, y: 180, labelX: 342 },
-  'coder-reviewer': { fromX: 660, toX: 768, y: 180, labelX: 714 },
-};
 
 function statusToDot(status: AgentNodeState['status']): 'idle' | 'running' | 'waiting' | 'done' | 'error' | 'stopped' {
   switch (status) {
@@ -46,18 +35,14 @@ function AgentCard({ role }: { role: AgentRole }) {
   const setAgentRole = useStore((state) => state.setAgentRole);
 
   const models = providerStatus?.providers.find((provider) => provider.id === settings.provider)?.models ?? [];
-  const position = CARD_POSITIONS[role];
   const accentClass = agent.role === 'planner' ? 'is-planner' : agent.role === 'coder' ? 'is-coder' : 'is-reviewer';
+  const stepNumber = ROLES.indexOf(role) + 1;
 
   return (
-    <article
-      className={`agent-card ${accentClass}`}
-      style={{ left: position.left, top: position.top }}
-      aria-label={`${agent.name} ajanı`}
-    >
+    <article className={`agent-card ${accentClass}`} aria-label={`${agent.name} ajanı`}>
       <div className="agent-card-head">
         <span className="agent-avatar" aria-hidden="true">
-          {agent.name.slice(0, 1).toLocaleUpperCase('tr-TR')}
+          {stepNumber}
         </span>
         <div className="grow">
           <input
@@ -70,7 +55,6 @@ function AgentCard({ role }: { role: AgentRole }) {
           <div className="agent-status-line">
             <StatusDot status={statusToDot(agent.status)} />
             {statusLabel(agent.status)}
-            <span className="dim">· {formatTokens(agent.tokens)} token</span>
             {agent.estimatedTokens > 0 ? <Badge tone="neutral">tahmini</Badge> : null}
           </div>
         </div>
@@ -135,7 +119,7 @@ function AgentCard({ role }: { role: AgentRole }) {
             ))}
           </div>
         ) : (
-          <div className="dim" style={{ fontSize: 10.5 }}>
+          <div className="dim" style={{ fontSize: 'var(--fs-2xs)', lineHeight: 1.5 }}>
             {role === 'planner'
               ? 'Görevi alt adımlara böler, kodlama görevini onaya sunar.'
               : role === 'coder'
@@ -144,69 +128,148 @@ function AgentCard({ role }: { role: AgentRole }) {
           </div>
         )}
         <div className="agent-token-line">
+          <span>{agent.tokens > 0 ? `${formatTokens(agent.tokens)} token` : 'henüz istek yok'}</span>
           <span>{role === 'planner' ? 'plan' : role === 'coder' ? 'kod' : 'inceleme'}</span>
-          <span>
-            {agent.estimatedTokens > 0 ? 'tahmini ' : ''}
-            {formatTokens(agent.tokens)} token
-          </span>
         </div>
       </div>
     </article>
   );
 }
 
-function Edges() {
+const EDGE_ORDER: Array<{ id: string; label: string }> = [
+  { id: 'planner-coder', label: 'görev devri' },
+  { id: 'coder-reviewer', label: 'diff incelemesi' },
+];
+
+function WorkflowLink({ index }: { index: number }) {
   const edges = useStore((state) => state.edges);
+  const descriptor = EDGE_ORDER[index];
+  const edge = edges.find((item: AgentEdgeState) => item.id === descriptor.id);
+  const state = edge?.state ?? 'idle';
   return (
-    <>
-      <svg className="edge-layer" viewBox="0 0 1056 470" preserveAspectRatio="none" aria-hidden="true">
-        {edges.map((edge: AgentEdgeState) => {
-          const geometry = EDGE_GEOMETRY[edge.id];
-          if (!geometry) return null;
-          const className = `edge-path is-${edge.state}`;
-          return (
-            <g key={edge.id}>
-              <path
-                className={className}
-                d={`M ${geometry.fromX} ${geometry.y} C ${geometry.fromX + 20} ${geometry.y}, ${
-                  geometry.toX - 20
-                } ${geometry.y}, ${geometry.toX - 8} ${geometry.y}`}
-              />
-              <polygon
-                className={`edge-arrow is-${edge.state}`}
-                points={`${geometry.toX - 8},${geometry.y - 4} ${geometry.toX},${geometry.y} ${geometry.toX - 8},${
-                  geometry.y + 4
-                }`}
-                style={{
-                  fill:
-                    edge.state === 'active'
-                      ? 'var(--accent)'
-                      : edge.state === 'done'
-                        ? '#4a6a58'
-                        : edge.state === 'blocked'
-                          ? '#6b5a2e'
-                          : '#2f3947',
-                }}
-              />
-            </g>
-          );
-        })}
-      </svg>
-      {edges.map((edge) => {
-        const geometry = EDGE_GEOMETRY[edge.id];
-        if (!geometry) return null;
-        return (
-          <span
-            key={`label-${edge.id}`}
-            className={`edge-label ${edge.state === 'active' ? 'is-active' : ''}`}
-            style={{ left: geometry.labelX, top: geometry.y - 13 }}
-          >
-            {edge.label}
-            {edge.state === 'active' ? ' …' : ''}
-          </span>
-        );
-      })}
-    </>
+    <div className={`workflow-link is-${state}`} aria-label={`${descriptor.label}: ${edge?.state ?? 'bekliyor'}`}>
+      <span>{descriptor.label}</span>
+      <span className="link-track" aria-hidden="true" />
+      <span>{edge?.state === 'active' ? 'sürüyor' : edge?.state === 'done' ? 'tamam' : edge?.state === 'blocked' ? 'onay bekliyor' : 'bekliyor'}</span>
+    </div>
+  );
+}
+
+function NextAction() {
+  const task = useStore((state) => state.task);
+  const workspace = useStore((state) => state.workspace);
+  const approvals = useStore((state) => state.approvals);
+  const changes = useStore((state) => state.changes);
+  const openReview = useStore((state) => state.openReview);
+  const openFolderDialog = useStore((state) => state.openFolderDialog);
+
+  const pendingApprovals = approvals.filter((approval) => approval.status === 'pending').length;
+  const pendingChanges = changes.filter((change) => change.status === 'pending').length;
+
+  if (!workspace) {
+    return (
+      <div className="next-action is-idle">
+        <div className="next-action-body">
+          <div className="next-action-title">Önce bir proje açın</div>
+          <div className="next-action-text">
+            Ajanlar yalnızca açık bir proje klasöründe çalışır; dosyalar onayınız olmadan yazılmaz.
+          </div>
+        </div>
+        <button type="button" className="button button-primary" onClick={() => void openFolderDialog()}>
+          <FolderIcon size={13} />
+          Proje klasörü aç
+        </button>
+      </div>
+    );
+  }
+
+  if (pendingApprovals > 0) {
+    return (
+      <div className="next-action is-waiting">
+        <div className="next-action-body">
+          <div className="next-action-title">
+            {pendingApprovals} onay bekliyor
+          </div>
+          <div className="next-action-text">
+            Ajan sıradaki adıma geçmek için sizin onayınızı bekliyor. Aşağıdaki onay kuyruğundan inceleyin.
+          </div>
+        </div>
+        <Badge tone="warn">eylem gerekli</Badge>
+      </div>
+    );
+  }
+
+  if (pendingChanges > 0) {
+    return (
+      <div className="next-action is-waiting">
+        <div className="next-action-body">
+          <div className="next-action-title">İncelenecek {pendingChanges} dosya değişikliği var</div>
+          <div className="next-action-text">
+            Değişiklikler yalnızca diff’i kabul ettiğinizde diske yazılır; reddederseniz hiçbir şey değişmez.
+          </div>
+        </div>
+        <button type="button" className="button button-primary" onClick={openReview}>
+          <CheckIcon size={13} />
+          Diff’i incele
+        </button>
+      </div>
+    );
+  }
+
+  if (task.status === 'running') {
+    return (
+      <div className="next-action">
+        <div className="next-action-body">
+          <div className="next-action-title">Görev çalışıyor</div>
+          <div className="next-action-text">
+            {task.title || 'Görev'} · ajanlar sırayla ilerliyor; adımları görev günlüğünde izleyebilirsiniz.
+          </div>
+        </div>
+        <Badge tone="accent">sürüyor</Badge>
+      </div>
+    );
+  }
+
+  if (task.status === 'error') {
+    return (
+      <div className="next-action is-error">
+        <div className="next-action-body">
+          <div className="next-action-title">Görev hata ile durdu</div>
+          <div className="next-action-text">
+            Alt paneldeki görev günlüğünde hatanın ayrıntısı var. Sağlayıcı ve anahtar durumunu kontrol edip yeniden
+            deneyin.
+          </div>
+        </div>
+        <Badge tone="danger">hata</Badge>
+      </div>
+    );
+  }
+
+  if (task.status === 'done') {
+    return (
+      <div className="next-action">
+        <div className="next-action-body">
+          <div className="next-action-title">Görev tamamlandı</div>
+          <div className="next-action-text">
+            Değişiklikler incelendi. Yeni bir görev yazdığınızda ajanlar yeniden planlamaya başlar.
+          </div>
+        </div>
+        <Badge tone="success">tamamlandı</Badge>
+      </div>
+    );
+  }
+
+  return (
+    <div className="next-action is-idle">
+      <div className="next-action-body">
+        <div className="next-action-title">Sıradaki adım: bir görev tanımlayın</div>
+        <div className="next-action-text">
+          Planlayıcı görevi böler, kodlayıcı diff önerir, inceleyici değerlendirir. Hiçbir dosya onay olmadan
+          yazılmaz.
+        </div>
+      </div>
+      <Badge tone="neutral">{taskStatusLabel(task.status)}</Badge>
+    </div>
   );
 }
 
@@ -217,7 +280,6 @@ export function GraphView() {
   const workspace = useStore((state) => state.workspace);
   const changes = useStore((state) => state.changes);
   const openReview = useStore((state) => state.openReview);
-  const agents = useStore((state) => state.agents);
   const [input, setInput] = useState('');
 
   const running = task.status === 'running' || task.status === 'awaiting-approval';
@@ -229,14 +291,27 @@ export function GraphView() {
         <div>
           <h1 className="view-title">Görev Grafiği</h1>
           <p className="view-desc">
-            Planlayıcı görevi böler, kodlayıcı diff üretir, inceleyici diff’i değerlendirir. Oklar görev devrini
-            gösterir; her ajanın ürettiği yeni görev ve komut sizin onayınızı bekler.
+            Planlayıcı → kodlayıcı → inceleyici. Her devir ve komut sizin onayınızı bekler; dosyalar yalnızca diff
+            kabul edildiğinde yazılır.
           </p>
         </div>
         <div className="view-header-actions">
-          <Badge tone={task.status === 'error' ? 'danger' : task.status === 'awaiting-approval' ? 'warn' : running ? 'accent' : 'neutral'}>
+          <span className="row" style={{ gap: 7, fontSize: 'var(--fs-xs)', color: 'var(--text-2)' }}>
+            <StatusDot
+              status={
+                task.status === 'error'
+                  ? 'error'
+                  : task.status === 'awaiting-approval'
+                    ? 'waiting'
+                    : running
+                      ? 'running'
+                      : task.status === 'done'
+                        ? 'done'
+                        : 'idle'
+              }
+            />
             {taskStatusLabel(task.status)}
-          </Badge>
+          </span>
           {pendingChanges > 0 ? (
             <button type="button" className="button button-small" onClick={openReview}>
               Diff’i incele ({pendingChanges})
@@ -244,6 +319,8 @@ export function GraphView() {
           ) : null}
         </div>
       </div>
+
+      <NextAction />
 
       <div className="graph-toolbar">
         <input
@@ -262,7 +339,7 @@ export function GraphView() {
             workspace
               ? task.title
                 ? `Son görev: ${task.title}`
-                : 'Bir görev yazın, örn. "Görev başlığını kısalt"'
+                : 'Bir görev yazın, örn. "Görev başlığını kısalt ve yardımcı fonksiyon ekle"'
               : 'Önce bir proje klasörü açın'
           }
           disabled={!workspace || running}
@@ -271,7 +348,7 @@ export function GraphView() {
         {running ? (
           <button type="button" className="button button-danger" onClick={stopTask}>
             <StopIcon size={12} />
-            Görevi durdur
+            Durdur
           </button>
         ) : (
           <button
@@ -289,34 +366,27 @@ export function GraphView() {
             Görevi başlat
           </button>
         )}
-        <span className="dim" style={{ fontSize: 11 }}>
-          {workspace ? `${workspace.name} · ${Object.values(agents).map((agent) => agent.name).join(' → ')}` : 'Proje yok'}
-        </span>
+        {workspace ? (
+          <span className="dim" style={{ fontSize: 'var(--fs-2xs)' }}>
+            {workspace.name}
+          </span>
+        ) : null}
       </div>
 
-      <div className="graph-scroll">
-        <div className="graph-canvas">
-          <Edges />
-          {ROLES.map((role) => (
-            <AgentCard key={role} role={role} />
-          ))}
-        </div>
-      </div>
-
-      <div className="graph-footnote">
-        <Badge tone="neutral">kenarlar</Badge>
-        <span>Planlayıcı → Kodlayıcı: onaylanan görev devri · Kodlayıcı → İnceleyici: diff incelemesi</span>
-        <span className="dim">· Animasyon yalnızca etkin kenarda ve hareket azaltma tercihine saygılı.</span>
+      <div className="workflow">
+        <AgentCard role="planner" />
+        <WorkflowLink index={0} />
+        <AgentCard role="coder" />
+        <WorkflowLink index={1} />
+        <AgentCard role="reviewer" />
       </div>
 
       <section className="approval-queue" aria-label="Onay kuyruğu">
-        <div className="panel panel-pad">
-          <div className="section-title">
-            <span>Onay kuyruğu</span>
-            <span className="section-hint">Yeni görevler ve komutlar otomatik yürütülmez</span>
-          </div>
-          <ApprovalList />
+        <div className="section-title">
+          <span>Onay kuyruğu</span>
+          <span className="section-hint">Yeni görevler ve komutlar otomatik yürütülmez</span>
         </div>
+        <ApprovalList />
       </section>
     </div>
   );

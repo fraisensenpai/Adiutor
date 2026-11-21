@@ -8,6 +8,8 @@ import {
   GraphIcon,
   MapIcon,
   PanelIcon,
+  SparkIcon,
+  SplitIcon,
 } from './ui/Icons';
 import { IconButton } from './ui/primitives';
 import { basename } from '@/lib/format';
@@ -20,7 +22,17 @@ const VIEWS: Array<{ id: ViewId; label: string; icon: typeof CodeIcon }> = [
   { id: 'usage', label: 'Kullanım', icon: ChartIcon },
 ];
 
-export function TitleBar() {
+export function TitleBar({
+  sidebarOpen,
+  chatOpen,
+  onToggleSidebar,
+  onToggleChat,
+}: {
+  sidebarOpen: boolean;
+  chatOpen: boolean;
+  onToggleSidebar: () => void;
+  onToggleChat: () => void;
+}) {
   const view = useStore((state) => state.view);
   const setView = useStore((state) => state.setView);
   const workspace = useStore((state) => state.workspace);
@@ -36,7 +48,7 @@ export function TitleBar() {
   return (
     <header className="titlebar">
       <div className="brand">
-        <img className="brand-mark" src={logo} alt="" width={24} height={24} aria-hidden="true" />
+        <img className="brand-mark" src={logo} alt="" width={22} height={22} aria-hidden="true" />
         <span className="brand-name">Adiutor</span>
       </div>
 
@@ -86,6 +98,20 @@ export function TitleBar() {
           </button>
         ) : null}
 
+        <IconButton
+          label={sidebarOpen ? 'Kenar çubuğunu gizle' : 'Kenar çubuğunu göster'}
+          aria-pressed={sidebarOpen}
+          onClick={onToggleSidebar}
+        >
+          <SplitIcon size={15} />
+        </IconButton>
+        <IconButton
+          label={chatOpen ? 'Sohbeti gizle' : 'Sohbeti göster'}
+          aria-pressed={chatOpen}
+          onClick={onToggleChat}
+        >
+          <SparkIcon size={15} />
+        </IconButton>
         <IconButton label="Alt paneli aç/kapat" onClick={toggleBottom}>
           <PanelIcon size={15} />
         </IconButton>

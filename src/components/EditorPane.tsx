@@ -31,9 +31,7 @@ function TabStrip() {
           }}
           title={tab.path}
         >
-          <span className="dim" style={{ fontSize: 9.5, fontWeight: 700 }}>
-            {languageLabel(tab.language)}
-          </span>
+          <span className="tab-lang">{languageLabel(tab.language)}</span>
           <span className="tab-label">{tab.name}</span>
           {tab.dirty ? <span className="dirty-dot" aria-label="kaydedilmedi" /> : null}
           <button
@@ -88,7 +86,6 @@ export function EditorPane() {
                 <span className="dim">/</span>
                 <strong>{activeTab.name}</strong>
               </span>
-              {activeTab.dirty ? <span className="dim">· kaydedilmedi</span> : null}
               <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, alignItems: 'center' }}>
                 {problemCount > 0 ? (
                   <button type="button" className="button button-ghost button-small" onClick={() => setBottomTab('problems')}>
@@ -99,7 +96,7 @@ export function EditorPane() {
                 {selection ? (
                   <button type="button" className="button button-ghost button-small" onClick={() => void addSelectionToContext()}>
                     <PlusIcon size={12} />
-                    Seçimi bağlama ekle ({selection.endLine - selection.startLine + 1} satır)
+                    Seçimi ekle · {selection.endLine - selection.startLine + 1} satır
                   </button>
                 ) : null}
                 <button
@@ -108,7 +105,7 @@ export function EditorPane() {
                   onClick={() => void addFilesToContext([activeTab.path])}
                 >
                   <PlusIcon size={12} />
-                  Dosyayı bağlama ekle
+                  Bağlama ekle
                 </button>
                 <IconButton label="Dosyayı kaydet (Ctrl+S)" onClick={() => void saveActive()} disabled={!activeTab.dirty}>
                   <UploadIcon size={13} />

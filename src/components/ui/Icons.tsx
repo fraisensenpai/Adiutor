@@ -194,6 +194,13 @@ export const UploadIcon = (props: IconProps) => (
   </Icon>
 );
 
+export const TrashIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
+    <path d="M10 11v5M14 11v5" />
+  </Icon>
+);
+
 export const SparkIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M12 3v4M12 17v4M4.5 12h4M15.5 12h4M6.7 6.7l2.8 2.8M14.5 14.5l2.8 2.8M17.3 6.7l-2.8 2.8M9.5 14.5l-2.8 2.8" />

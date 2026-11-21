@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react';
 import { useStore } from '@/state/store';
 import { formatTokens } from '@shared/tokens';
 import { Markdown } from './ui/Markdown';
-import { Badge, StatusDot } from './ui/primitives';
-import { AlertIcon, PlayIcon, SendIcon, StopIcon, XIcon } from './ui/Icons';
+import { Badge, IconButton, StatusDot } from './ui/primitives';
+import { AlertIcon, PlayIcon, SendIcon, StopIcon, TrashIcon, XIcon } from './ui/Icons';
 import { ApprovalList } from './ApprovalList';
 import { formatTime, roleLabel, taskStatusLabel } from '@/lib/format';
 import type { ChatMessage } from '@shared/types';
@@ -29,7 +29,7 @@ function MessageMeta({ message }: { message: ChatMessage }) {
   );
 }
 
-export function ChatPanel() {
+export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const chat = useStore((state) => state.chat);
   const chatInput = useStore((state) => state.chatInput);
   const setChatInput = useStore((state) => state.setChatInput);
@@ -73,12 +73,14 @@ export function ChatPanel() {
     void startTask(title);
   };
 
+  if (!open) return null;
+
   return (
     <aside className="chat-panel" aria-label="AI sohbeti">
       <div className="chat-header">
         <div className="grow">
           <div className="chat-title">Sohbet</div>
-          <div className="chat-subtitle">
+          <div className="chat-subtitle" title={`${provider?.label ?? 'Sağlayıcı'} · ${settings.model}`}>
             {provider?.label ?? 'Sağlayıcı'} · {settings.model}
           </div>
         </div>
@@ -87,16 +89,17 @@ export function ChatPanel() {
             Diff <Badge tone="accent">{pendingChanges}</Badge>
           </button>
         ) : null}
-        <button
-          type="button"
-          className="link-button"
-          title="Sohbet geçmişini temizle"
+        <IconButton
+          label="Sohbet geçmişini temizle"
           onClick={() => {
             if (window.confirm('Sohbet geçmişi kalıcı olarak silinsin mi?')) void clearChat();
           }}
         >
-          Temizle
-        </button>
+          <TrashIcon size={14} />
+        </IconButton>
+        <IconButton label="Sohbeti gizle" onClick={onClose}>
+          <XIcon size={15} />
+        </IconButton>
       </div>
 
       <div className="chat-context-bar">
@@ -108,12 +111,9 @@ export function ChatPanel() {
         >
           <StatusDot status={contextItems.length > 0 ? 'done' : 'idle'} />
           <span>
-            Bağlam: <strong>{contextItems.length} parça</strong> · ~{formatTokens(contextTokens)} token /{' '}
-            {formatTokens(settings.maxContextTokens)} bütçe
+            {contextItems.length} parça · ~{formatTokens(contextTokens)} / {formatTokens(settings.maxContextTokens)} token
           </span>
-          <span className="dim" style={{ marginLeft: 'auto' }}>
-            görüntüle
-          </span>
+          <span style={{ marginLeft: 'auto' }}>bağlamı görüntüle</span>
         </button>
         {contextItems.length > 0 ? (
           <div className="context-chips">
@@ -225,15 +225,15 @@ export function ChatPanel() {
               Görevi başlat
             </button>
           )}
-          <span className="composer-hint grow">
-            {missingKey ? `İstek için ${provider?.label ?? 'sağlayıcı'} anahtarı gerekli.` : 'Enter: sohbet · Ctrl+Enter: görev'}
-            {missingKey ? (
-              <button type="button" className="link-button" style={{ marginLeft: 6 }} onClick={() => setView('settings')}>
-                Anahtar ekle
-              </button>
-            ) : null}
-          </span>
         </div>
+        {missingKey ? (
+          <p className="composer-hint">
+            İstek için {provider?.label ?? 'sağlayıcı'} anahtarı gerekli.{' '}
+            <button type="button" className="link-button" onClick={() => setView('settings')}>
+              Anahtar ekle
+            </button>
+          </p>
+        ) : null}
       </div>
     </aside>
   );

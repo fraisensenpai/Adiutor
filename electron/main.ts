@@ -178,8 +178,8 @@ function createWindow(): BrowserWindow {
   const window = new BrowserWindow({
     width: 1480,
     height: 940,
-    minWidth: 1080,
-    minHeight: 680,
+    minWidth: 820,
+    minHeight: 600,
     backgroundColor: '#0c0e12',
     title: 'Adiutor',
     icon: path.join(__dirname, '..', 'build', 'icon.png'),
