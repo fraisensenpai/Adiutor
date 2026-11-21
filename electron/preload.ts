@@ -19,58 +19,76 @@ function subscribe<TPayload>(channel: string, listener: (payload: TPayload) => v
   };
 }
 
+/**
+ * `ipcRenderer.invoke` sarmalayıcısı.
+ *
+ * Electron, ana süreçte fırlatılan hatayı "Error invoking remote method 'kanal':
+ * Error: …" biçiminde sarar. Kullanıcıya yalnızca gerçek mesaj gösterilir.
+ */
+const INVOKE_PREFIX = /^Error invoking remote method '[^']*':\s*(?:[A-Za-z]*Error:\s*)?/;
+
+async function call<T>(channel: string, ...args: unknown[]): Promise<T> {
+  try {
+    return (await ipcRenderer.invoke(channel, ...args)) as T;
+  } catch (error) {
+    const raw = error instanceof Error ? error.message : String(error);
+    const message = raw.replace(INVOKE_PREFIX, '').trim();
+    throw new Error(message || 'İşlem tamamlanamadı.');
+  }
+}
+
 const api: AdiutorApi = {
   app: {
-    info: () => ipcRenderer.invoke(IPC.appInfo),
+    info: () => call(IPC.appInfo),
   },
   workspace: {
-    openDialog: () => ipcRenderer.invoke(IPC.openFolderDialog),
-    openPath: (target: string) => ipcRenderer.invoke(IPC.openFolderPath, target),
-    createSample: () => ipcRenderer.invoke(IPC.createSampleWorkspace),
-    readTree: (root: string) => ipcRenderer.invoke(IPC.readTree, root),
-    readFile: (target: string) => ipcRenderer.invoke(IPC.readFile, target),
-    saveFile: (target: string, content: string) => ipcRenderer.invoke(IPC.saveFile, target, content),
-    reveal: (target: string) => ipcRenderer.invoke(IPC.revealPath, target),
+    openDialog: () => call(IPC.openFolderDialog),
+    openPath: (target: string) => call(IPC.openFolderPath, target),
+    createSample: () => call(IPC.createSampleWorkspace),
+    readTree: (root: string) => call(IPC.readTree, root),
+    readFile: (target: string) => call(IPC.readFile, target),
+    saveFile: (target: string, content: string) => call(IPC.saveFile, target, content),
+    reveal: (target: string) => call(IPC.revealPath, target),
   },
   index: {
-    snapshot: (root: string) => ipcRenderer.invoke(IPC.indexSnapshot, root),
-    reindex: (root: string) => ipcRenderer.invoke(IPC.indexReindex, root),
+    snapshot: (root: string) => call(IPC.indexSnapshot, root),
+    reindex: (root: string) => call(IPC.indexReindex, root),
     relations: (root: string, symbolId: string) =>
-      ipcRenderer.invoke(IPC.indexRelations, root, symbolId),
+      call(IPC.indexRelations, root, symbolId),
     context: (root: string, request: ContextRequest) =>
-      ipcRenderer.invoke(IPC.indexContext, root, request),
-    notifySaved: (target: string) => ipcRenderer.invoke(IPC.indexApply, target),
+      call(IPC.indexContext, root, request),
+    notifySaved: (target: string) => call(IPC.indexApply, target),
   },
   lsp: {
-    diagnostics: (target: string) => ipcRenderer.invoke(IPC.lspDiagnostics, target),
+    diagnostics: (target: string) => call(IPC.lspDiagnostics, target),
   },
   providers: {
-    status: () => ipcRenderer.invoke(IPC.providerStatus),
-    complete: (request: CompletionRequest) => ipcRenderer.invoke(IPC.providerComplete, request),
-    cancel: (requestId: string) => ipcRenderer.invoke(IPC.providerCancel, requestId),
+    status: () => call(IPC.providerStatus),
+    complete: (request: CompletionRequest) => call(IPC.providerComplete, request),
+    cancel: (requestId: string) => call(IPC.providerCancel, requestId),
     setApiKey: (provider: ProviderId, apiKey: string) =>
-      ipcRenderer.invoke(IPC.secretSet, provider, apiKey),
-    clearApiKey: (provider: ProviderId) => ipcRenderer.invoke(IPC.secretClear, provider),
+      call(IPC.secretSet, provider, apiKey),
+    clearApiKey: (provider: ProviderId) => call(IPC.secretClear, provider),
   },
   usage: {
-    list: () => ipcRenderer.invoke(IPC.usageList),
-    summary: () => ipcRenderer.invoke(IPC.usageSummary),
-    insert: (record: UsageRecord) => ipcRenderer.invoke(IPC.usageInsert, record),
+    list: () => call(IPC.usageList),
+    summary: () => call(IPC.usageSummary),
+    insert: (record: UsageRecord) => call(IPC.usageInsert, record),
   },
   settings: {
-    get: () => ipcRenderer.invoke(IPC.settingsGet),
-    set: (settings: AppSettings) => ipcRenderer.invoke(IPC.settingsSet, settings),
+    get: () => call(IPC.settingsGet),
+    set: (settings: AppSettings) => call(IPC.settingsSet, settings),
   },
   chat: {
-    load: () => ipcRenderer.invoke(IPC.chatLoad),
-    append: (message: ChatMessage) => ipcRenderer.invoke(IPC.chatAppend, message),
-    clear: () => ipcRenderer.invoke(IPC.chatClear),
+    load: () => call(IPC.chatLoad),
+    append: (message: ChatMessage) => call(IPC.chatAppend, message),
+    clear: () => call(IPC.chatClear),
   },
   terminal: {
-    start: (cwd: string) => ipcRenderer.invoke(IPC.terminalStart, cwd),
-    write: (sessionId: string, data: string) => ipcRenderer.invoke(IPC.terminalWrite, sessionId, data),
-    kill: (sessionId: string) => ipcRenderer.invoke(IPC.terminalKill, sessionId),
-    run: (cwd: string, command: string) => ipcRenderer.invoke(IPC.terminalRun, cwd, command),
+    start: (cwd: string) => call(IPC.terminalStart, cwd),
+    write: (sessionId: string, data: string) => call(IPC.terminalWrite, sessionId, data),
+    kill: (sessionId: string) => call(IPC.terminalKill, sessionId),
+    run: (cwd: string, command: string) => call(IPC.terminalRun, cwd, command),
   },
   events: {
     onIndexProgress: (listener: (payload: { root: string; progress: IndexProgress }) => void) =>

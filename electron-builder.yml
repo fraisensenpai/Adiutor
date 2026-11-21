@@ -1,0 +1,47 @@
+appId: com.adiutor.app
+productName: Adiutor
+copyright: Copyright © 2026 Adiutor
+
+directories:
+  output: release
+  buildResources: build
+
+# Yalnızca çalışması için gereken derlenmiş çıktı ve üretim bağımlılıkları paketlenir.
+files:
+  - package.json
+  - dist/**/*
+  - dist-electron/**/*
+  - build/icon.png
+  - '!**/*.map'
+  - '!src/**'
+  - '!electron/**'
+  - '!scripts/**'
+  - '!docs/**'
+  - '!release/**'
+  - '!.smoke/**'
+  - '!.git/**'
+
+# SQLite ve dil gramerleri wasm dosyalarını çalışma anında diskten okur;
+# asar arşivi içinden okunamadıkları için arşiv dışında bırakılır.
+asarUnpack:
+  - node_modules/node-sqlite3-wasm/**/*
+  - node_modules/tree-sitter-wasms/**/*
+  - node_modules/web-tree-sitter/**/*
+
+win:
+  icon: build/icon.png
+  target:
+    - target: portable
+      arch:
+        - x64
+
+portable:
+  artifactName: Adiutor-${version}.exe
+  requestExecutionLevel: user
+
+# Tek dosya çıktı: kurulum yok, çift tıklayınca çalışır.
+nsis:
+  oneClick: true
+  perMachine: false
+
+compression: maximum

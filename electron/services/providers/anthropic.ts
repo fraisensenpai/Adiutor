@@ -1,5 +1,6 @@
 import type { CompletionResult, ProviderInfo } from '../../../src/shared/types';
 import { estimateTokens } from '../../../src/shared/tokens';
+import { fetchWithRetry, retryAfterSeconds } from './http';
 import { ProviderFailure, type ProviderAdapter, type ProviderContext } from './types';
 
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
@@ -34,7 +35,7 @@ interface AnthropicResponse {
   error?: { message?: string; type?: string };
 }
 
-function errorMessage(status: number, detail: string): string {
+function errorMessage(status: number, detail: string, retryAfter: number | null = null): string {
   switch (status) {
     case 401:
       return 'Anthropic API anahtarı geçersiz veya süresi dolmuş. Ayarlardan anahtarı yenileyin.';
@@ -43,7 +44,12 @@ function errorMessage(status: number, detail: string): string {
     case 404:
       return 'Seçilen Claude modeli bulunamadı. Ayarlardan geçerli bir model kimliği seçin.';
     case 429:
-      return 'Anthropic istek sınırı aşıldı. Kısa bir süre sonra tekrar deneyin.';
+      if (/credit balance is too low|billing/i.test(detail)) {
+        return 'Claude kullanım kotası doldu. Anthropic hesabınızda kredi ve faturalandırma ayarlarını kontrol edin.';
+      }
+      return `Anthropic istek sınırı aşıldı.${
+        retryAfter ? ` Yaklaşık ${retryAfter} saniye sonra` : ' Kısa bir süre sonra'
+      } tekrar deneyin.`;
     case 500:
     case 502:
     case 503:
@@ -93,16 +99,19 @@ export const anthropicProvider: ProviderAdapter = {
       };
       if (system) body.system = system;
 
-      const response = await fetch(ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': context.apiKey,
-          'anthropic-version': API_VERSION,
+      const response = await fetchWithRetry(
+        ENDPOINT,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': context.apiKey,
+            'anthropic-version': API_VERSION,
+          },
+          body: JSON.stringify(body),
         },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
+        controller.signal,
+      );
 
       if (!response.ok) {
         let detail = '';
@@ -112,7 +121,11 @@ export const anthropicProvider: ProviderAdapter = {
         } catch {
           detail = '';
         }
-        throw new ProviderFailure(errorMessage(response.status, detail), 'http-error', response.status);
+        throw new ProviderFailure(
+          errorMessage(response.status, detail, retryAfterSeconds(response)),
+          'http-error',
+          response.status,
+        );
       }
 
       const data = (await response.json()) as AnthropicResponse;

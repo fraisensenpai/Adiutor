@@ -1,7 +1,7 @@
 {
   "name": "adiutor",
   "productName": "Adiutor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Local-first desktop code editor with an AI agent task graph (planner, coder, reviewer), explicit diff approvals and support for OpenAI, Claude, DeepSeek and Grok.",
   "license": "MIT",
@@ -30,6 +30,8 @@
     "build:main": "node scripts/build-main.mjs",
     "build": "npm run build:renderer && npm run build:main",
     "start": "npm run build && electron .",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win portable",
     "typecheck": "tsc -p tsconfig.renderer.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "smoke": "node scripts/smoke.mjs"
   },
@@ -48,6 +50,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "5.2.0",
     "electron": "45.4.1",
+    "electron-builder": "^26.18.0",
     "esbuild": "0.28.2",
     "typescript": "5.9.3",
     "vite": "7.3.8"

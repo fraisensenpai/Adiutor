@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-electron/
+release/
 .smoke/
 *.log
 .DS_Store

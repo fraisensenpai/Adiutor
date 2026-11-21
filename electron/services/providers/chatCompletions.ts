@@ -1,5 +1,6 @@
 import type { CompletionResult, ProviderId, ProviderInfo } from '../../../src/shared/types';
 import { estimateTokens } from '../../../src/shared/tokens';
+import { fetchWithRetry, retryAfterSeconds } from './http';
 import { ProviderFailure, type ProviderAdapter, type ProviderContext } from './types';
 
 /**
@@ -36,7 +37,13 @@ interface ChatResponse {
   error?: { message?: string; code?: string; type?: string };
 }
 
-function errorMessage(label: string, status: number, detail: string): string {
+function errorMessage(
+  label: string,
+  status: number,
+  detail: string,
+  retryAfter: number | null = null,
+  code = '',
+): string {
   switch (status) {
     case 401:
       return `${label} API anahtarı geçersiz veya süresi dolmuş. Ayarlardan anahtarı yenileyin.`;
@@ -45,7 +52,12 @@ function errorMessage(label: string, status: number, detail: string): string {
     case 404:
       return `Seçilen model ${label} üzerinde bulunamadı. Ayarlardan geçerli bir model kimliği seçin.`;
     case 429:
-      return `${label} istek sınırı aşıldı. Kısa bir süre sonra tekrar deneyin.`;
+      if (/insufficient_quota|billing_hard_limit/i.test(`${code} ${detail}`)) {
+        return `${label} kullanım kotası doldu. Sağlayıcı hesabınızda kredi ve faturalandırma ayarlarını kontrol edin.`;
+      }
+      return `${label} istek sınırı aşıldı.${
+        retryAfter ? ` Yaklaşık ${retryAfter} saniye sonra` : ' Kısa bir süre sonra'
+      } tekrar deneyin.`;
     case 500:
     case 502:
     case 503:
@@ -96,26 +108,31 @@ export function createChatCompletionsProvider(config: ChatCompletionsConfig): Pr
           body.response_format = { type: 'json_object' };
         }
 
-        const response = await fetch(config.endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${context.apiKey}`,
+        const response = await fetchWithRetry(
+          config.endpoint,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${context.apiKey}`,
+            },
+            body: JSON.stringify(body),
           },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        });
+          controller.signal,
+        );
 
         if (!response.ok) {
           let detail = '';
+          let code = '';
           try {
             const parsed = (await response.json()) as ChatResponse;
             detail = parsed.error?.message ?? '';
+            code = parsed.error?.code ?? parsed.error?.type ?? '';
           } catch {
             detail = '';
           }
           throw new ProviderFailure(
-            errorMessage(config.label, response.status, detail),
+            errorMessage(config.label, response.status, detail, retryAfterSeconds(response), code),
             'http-error',
             response.status,
           );

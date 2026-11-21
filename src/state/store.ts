@@ -31,6 +31,7 @@ import type {
   WorkspaceInfo,
 } from '@shared/types';
 import { basename, isSecretPath, relativeTo, resolveInWorkspace } from '@/lib/format';
+import { cleanErrorMessage, stripInvokePrefix } from '@/lib/errors';
 
 export interface EditorTab {
   path: string;
@@ -722,7 +723,7 @@ export const useStore = create<AppStore>()((set, get) => ({
         id: makeId('msg'),
         role: 'assistant',
         error: true,
-        content: error instanceof Error ? error.message : 'Sağlayıcı isteği başarısız oldu.',
+        content: cleanErrorMessage(error, 'Sağlayıcı isteği başarısız oldu.'),
         createdAt: Date.now(),
       });
     } finally {
@@ -811,7 +812,7 @@ export const useStore = create<AppStore>()((set, get) => ({
       }
       get().notify(`${basename(change.filePath)} güncellendi.`, 'success');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Dosya yazılamadı.';
+      const message = cleanErrorMessage(error, 'Dosya yazılamadı.');
       set({
         changes: get().changes.map((item) =>
           item.id === id ? { ...item, error: message } : item,
@@ -997,7 +998,8 @@ export const useStore = create<AppStore>()((set, get) => ({
 
   notify(message, tone = 'info') {
     const id = Date.now() + Math.floor(Math.random() * 1000);
-    set({ toast: { id, message, tone } });
+    const text = stripInvokePrefix(message);
+    set({ toast: { id, message: text || message, tone } });
     window.setTimeout(() => {
       if (get().toast?.id === id) set({ toast: null });
     }, 4200);
@@ -1222,7 +1224,7 @@ async function runTaskWith(
   try {
     await runTask(runtime);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Görev çalıştırılamadı.';
+    const message = cleanErrorMessage(error, 'Görev çalıştırılamadı.');
     set({ task: { ...get().task, status: 'error' } });
     log('error', message);
     get().notify(message, 'error');

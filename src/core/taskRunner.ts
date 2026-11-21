@@ -19,6 +19,7 @@ import type {
 import { diffLines } from '@shared/diff';
 import { buildMessages, type AgentFile, type AgentPayload } from './prompts';
 import { taskControl } from './taskControl';
+import { cleanErrorMessage } from '@/lib/errors';
 
 export type AgentId = AgentNodeState['id'];
 type Level = TaskLogEntry['level'];
@@ -171,7 +172,7 @@ function markStopped(runtime: TaskRuntime): void {
 }
 
 function markError(runtime: TaskRuntime, agent: AgentId, error: unknown): void {
-  const message = error instanceof Error ? error.message : 'Bilinmeyen hata.';
+  const message = cleanErrorMessage(error, 'Bilinmeyen hata.');
   runtime.patchAgent(agent, { status: 'error', lastMessage: message });
   runtime.addStep(agent, 'Adım başarısız', message, 'error');
   runtime.log('error', message, agent);
