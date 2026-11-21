@@ -84,9 +84,10 @@ It runs entirely on your machine. The only network traffic is the one you explic
 
 **Chat**
 - Project-aware conversation beside the editor
+- Saved chat sessions with an auto-titled history list
+- Resizable panel that widens to the left, plus a one-click wide mode
 - Visible context chips and a token budget
-- Persisted history with a one-click clear
-- Provider and model always visible in the header
+- Switch provider model straight from the header
 
 </td><td valign="top">
 
@@ -98,6 +99,8 @@ It runs entirely on your machine. The only network traffic is the one you explic
 
 </td></tr>
 </table>
+
+**Appearance** — dark, light, or follow the system theme; the window chrome, the editor and chat all switch together, and the choice is stored with your other settings.
 
 ## Screenshots
 
@@ -234,7 +237,7 @@ Uygulama tamamen kendi bilgisayarında çalışır. Tek ağ trafiği, kendi gird
 - **Ajanlar:** planlayıcı → kodlayıcı → inceleyici grafiği; her kartta ad (düzenlenebilir), rol (değiştirilebilir), model, durum, adımlar ve yaklaşık token; görevi başlat/durdur.
 - **İnceleme:** her değişiklik dosyanın tamamının satır diff’i olarak gösterilir; kabul, red, geri al, tümünü kabul/red. Onay olmadan tek bayt yazılmaz. Komut ve testler onay kartıyla çalışır.
 - **Proje haritası:** Tree-sitter (WASM) ile fonksiyon, sınıf, tür, değişken ve import çıkarımı; tanım–kullanım ilişkileri; tek tıkla AI bağlamına ekleme; dosya izleyiciyle artımlı güncelleme. Gramer yüklenemezse bunu açıkça söyleyip regex yedeğine düşer.
-- **Sohbet:** proje özeti ve seçtiğin bağlamla çalışan sağ panel; göndermeden önce **bağlamı görüntüle** (parça, dosya yolu, token); kalıcı geçmiş ve tek tıkla temizleme; etkin sağlayıcı ve model başlıkta görünür.
+- **Sohbet:** proje özeti ve seçtiğin bağlamla çalışan sağ panel; göndermeden önce **bağlamı görüntüle** (parça, dosya yolu, token); kayıtlı sohbet oturumları ve ilk mesajdan otomatik başlık alan geçmiş listesi; sola doğru sürükleyerek veya tek tıkla genişleyen panel; etkin sağlayıcı ve model başlıkta, model seçici orada da erişilebilir.
 - **Kullanım:** her istek SQLite’a yazılır; sağlayıcı, ajan ve görev bazında özet; “ölçülen” ve “tahmini” ayrı gösterilir; uydurma kota göstergesi yoktur.
 - **Güvenlik:** anahtarlar işletim sistemi kasasında (DPAPI / Keychain / libsecret) şifreli tutulur, arayüze geri verilmez; gizli dosyalar, `.env`, anahtarlar, sertifikalar, ikili ve 512 KB üzeri dosyalar indekslenmez ve modele gönderilmez; modelden gelen yollar proje köküne hapsedilir (`..`, mutlak yol ve dışarı çıkma reddedilir).
 
@@ -253,6 +256,8 @@ npm run dev
 - **Örnek projeyi aç** ile küçük bir TypeScript + Python projesi oluşturulur.
 - Görev grafiğinde bir görev yaz (örn. `Görev başlığını kısalt ve yardımcı fonksiyon ekle`), **Görevi başlat**.
 - Planlayıcının devrini onayla, inceleyicinin `npm test` komutunu onayla, diff’i incele ve kabul et.
+
+- **Ayarlar → Görünüm** bölümünden koyu, açık veya sistemi izleyen tema seçilebilir; kabuk, editör ve sohbet birlikte değişir.
 
 Anahtar yalnızca işletim sistemi kasasında şifreli saklanır; veritabanına, loglara veya sohbete yazılmaz.
 

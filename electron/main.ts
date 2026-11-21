@@ -4,6 +4,7 @@ import {
   dialog,
   ipcMain,
   Menu,
+  nativeTheme,
   protocol,
   shell,
   type MenuItemConstructorOptions,
@@ -23,10 +24,13 @@ import { isProviderId } from '../src/shared/settings';
 import {
   appendChatMessage,
   clearChatMessages,
+  createChatSession,
   databaseFilePath,
+  deleteChatSession,
   getSettings,
   initDatabase,
   insertUsage,
+  listChatSessions,
   listUsage,
   loadChatMessages,
   saveSettings,
@@ -180,7 +184,11 @@ function createWindow(): BrowserWindow {
     height: 940,
     minWidth: 820,
     minHeight: 600,
-    backgroundColor: '#0c0e12',
+    backgroundColor:
+      getSettings().theme === 'light' ||
+      (getSettings().theme === 'system' && !nativeTheme.shouldUseDarkColors)
+        ? '#f6f7f9'
+        : '#0c0e12',
     title: 'Adiutor',
     icon: path.join(__dirname, '..', 'build', 'icon.png'),
     show: false,
@@ -381,9 +389,14 @@ function registerIpc(): void {
   ipcMain.handle(IPC.settingsSet, async (_event, settings: AppSettings) => saveSettings(settings));
 
   /* ----------------------------- sohbet ----------------------------- */
-  ipcMain.handle(IPC.chatLoad, async () => loadChatMessages());
-  ipcMain.handle(IPC.chatAppend, async (_event, message: ChatMessage) => appendChatMessage(message));
-  ipcMain.handle(IPC.chatClear, async () => clearChatMessages());
+  ipcMain.handle(IPC.chatLoad, async (_event, sessionId: string) => loadChatMessages(sessionId));
+  ipcMain.handle(IPC.chatAppend, async (_event, sessionId: string, message: ChatMessage) =>
+    appendChatMessage(sessionId, message),
+  );
+  ipcMain.handle(IPC.chatClear, async (_event, sessionId: string) => clearChatMessages(sessionId));
+  ipcMain.handle(IPC.chatSessions, async () => listChatSessions());
+  ipcMain.handle(IPC.chatCreate, async (_event, id: string, title: string) => createChatSession(id, title));
+  ipcMain.handle(IPC.chatDelete, async (_event, id: string) => deleteChatSession(id));
 
   /* ---------------------------- terminal ---------------------------- */
   ipcMain.handle(IPC.terminalStart, async (_event, cwd: string) => terminal.start(cwd));
@@ -595,8 +608,9 @@ async function runSmoke(window: BrowserWindow, depth: 'basic' | 'deep'): Promise
     console.log(`[smoke] diff hazır: ${reviewReady}`);
 
     const remainingMessages = (await window.webContents.executeJavaScript(`(async () => {
-      await window.adiutor.chat.clear();
-      const messages = await window.adiutor.chat.load();
+      const [session] = await window.adiutor.chat.sessions();
+      await window.adiutor.chat.clear(session.id);
+      const messages = await window.adiutor.chat.load(session.id);
       return messages.length;
     })()`)) as number;
     console.log(

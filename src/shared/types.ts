@@ -338,6 +338,14 @@ export interface ChatMessage {
   model?: string;
 }
 
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  messageCount: number;
+}
+
 /* ------------------------------------------------------------------ */
 /* Kullanım                                                            */
 /* ------------------------------------------------------------------ */
@@ -376,11 +384,14 @@ export interface AgentConfig {
   enabled: boolean;
 }
 
+export type ThemeMode = 'dark' | 'light' | 'system';
+
 export interface AppSettings {
   provider: ProviderId;
   model: string;
   agents: Record<AgentRole, AgentConfig>;
   maxContextTokens: number;
+  theme: ThemeMode;
 }
 
 /* ------------------------------------------------------------------ */

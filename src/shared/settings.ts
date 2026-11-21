@@ -1,4 +1,4 @@
-import type { AppSettings, ProviderId } from './types';
+import type { AppSettings, ProviderId, ThemeMode } from './types';
 
 export const PROVIDER_IDS: ProviderId[] = [
   'openai',
@@ -16,6 +16,12 @@ export const DEFAULT_MODEL = 'gpt-6.2-sol';
 
 export function isProviderId(value: unknown): value is ProviderId {
   return typeof value === 'string' && (PROVIDER_IDS as string[]).includes(value);
+}
+
+export const THEME_MODES: ThemeMode[] = ['dark', 'light', 'system'];
+
+export function isThemeMode(value: unknown): value is ThemeMode {
+  return typeof value === 'string' && (THEME_MODES as string[]).includes(value);
 }
 
 /**
@@ -60,4 +66,5 @@ export const DEFAULT_SETTINGS: AppSettings = {
     reviewer: { model: DEFAULT_MODEL, enabled: true },
   },
   maxContextTokens: 6000,
+  theme: 'system',
 };

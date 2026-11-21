@@ -80,9 +80,12 @@ const api: AdiutorApi = {
     set: (settings: AppSettings) => call(IPC.settingsSet, settings),
   },
   chat: {
-    load: () => call(IPC.chatLoad),
-    append: (message: ChatMessage) => call(IPC.chatAppend, message),
-    clear: () => call(IPC.chatClear),
+    load: (sessionId: string) => call(IPC.chatLoad, sessionId),
+    append: (sessionId: string, message: ChatMessage) => call(IPC.chatAppend, sessionId, message),
+    clear: (sessionId: string) => call(IPC.chatClear, sessionId),
+    sessions: () => call(IPC.chatSessions),
+    create: (id: string, title: string) => call(IPC.chatCreate, id, title),
+    remove: (id: string) => call(IPC.chatDelete, id),
   },
   terminal: {
     start: (cwd: string) => call(IPC.terminalStart, cwd),

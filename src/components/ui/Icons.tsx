@@ -206,3 +206,18 @@ export const SparkIcon = (props: IconProps) => (
     <path d="M12 3v4M12 17v4M4.5 12h4M15.5 12h4M6.7 6.7l2.8 2.8M14.5 14.5l2.8 2.8M17.3 6.7l-2.8 2.8M9.5 14.5l-2.8 2.8" />
   </Icon>
 );
+
+export const HistoryIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M3 12a9 9 0 1 0 3-6.7" />
+    <path d="M3 4v5h5" />
+    <path d="M12 8v4l3 2" />
+  </Icon>
+);
+
+export const WidenIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M4 12h16" />
+    <path d="m8 8-4 4 4 4M16 8l4 4-4 4" />
+  </Icon>
+);

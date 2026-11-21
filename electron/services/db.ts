@@ -1,8 +1,8 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { app } from 'electron';
-import type { AppSettings, UsageRecord, UsageSummary, ChatMessage } from '../../src/shared/types';
-import { DEFAULT_SETTINGS, DEFAULT_MODEL, isProviderId, migrateModel } from '../../src/shared/settings';
+import type { AppSettings, UsageRecord, UsageSummary, ChatMessage, ChatSession } from '../../src/shared/types';
+import { DEFAULT_SETTINGS, DEFAULT_MODEL, isProviderId, isThemeMode, migrateModel } from '../../src/shared/settings';
 import { stripInvokePrefix } from '../../src/shared/errors';
 
 /**
@@ -59,7 +59,21 @@ function schema(database: SqliteDatabase) {
       agent_role TEXT,
       meta TEXT
     );
+    CREATE TABLE IF NOT EXISTS chat_sessions (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
   `);
+
+  // Eski veritabanlarında oturum kolonu yok; sessizce eklenir.
+  const columns = database.all('PRAGMA table_info(chat_messages)') as Array<{ name: string }>;
+  if (!columns.some((column) => column.name === 'session_id')) {
+    database.exec('ALTER TABLE chat_messages ADD COLUMN session_id TEXT');
+  }
+  database.exec('CREATE INDEX IF NOT EXISTS idx_chat_session ON chat_messages(session_id, created_at)');
+  ensureChatSessions(database);
 }
 
 export function initDatabase(): string {
@@ -102,6 +116,7 @@ export function getSettings(): AppSettings {
       ...parsed,
       provider,
       model: staleModel ? DEFAULT_MODEL : migrateModel(parsed.model),
+      theme: isThemeMode(parsed.theme) ? parsed.theme : DEFAULT_SETTINGS.theme,
       agents: staleModel
         ? {
             planner: { ...agents.planner, model: DEFAULT_MODEL },
@@ -248,11 +263,95 @@ interface StoredMessageRow extends Row {
   meta: string | null;
 }
 
-export function appendChatMessage(message: ChatMessage): void {
+interface StoredSessionRow extends Row {
+  id: string;
+  title: string;
+  created_at: number;
+  updated_at: number;
+  message_count?: number;
+}
+
+export const DEFAULT_CHAT_SESSION = 'session-default';
+
+function createSessionRow(database: SqliteDatabase, id: string, title: string): void {
+  const now = Date.now();
+  database.run(
+    `INSERT OR IGNORE INTO chat_sessions (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)`,
+    [id, title, now, now],
+  );
+}
+
+/** Oturum tablosu boşsa varsayılan bir oturum açar ve eski mesajları ona bağlar. */
+function ensureChatSessions(database: SqliteDatabase): void {
+  const row = database.get('SELECT COUNT(*) AS count FROM chat_sessions') as { count: number } | undefined;
+  if (!row || Number(row.count) === 0) {
+    createSessionRow(database, DEFAULT_CHAT_SESSION, 'Sohbet');
+  }
+  database.run(`UPDATE chat_messages SET session_id = ? WHERE session_id IS NULL OR session_id = ''`, [
+    DEFAULT_CHAT_SESSION,
+  ]);
+}
+
+function titleFromMessage(content: string): string {
+  const plain = content
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/[#>*_`]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!plain) return 'Yeni sohbet';
+  return plain.length > 52 ? `${plain.slice(0, 52).trimEnd()}…` : plain;
+}
+
+export function listChatSessions(): ChatSession[] {
+  const rows = handle().all(
+    `SELECT s.id, s.title, s.created_at, s.updated_at, COUNT(m.id) AS message_count
+     FROM chat_sessions s
+     LEFT JOIN chat_messages m ON m.session_id = s.id
+     GROUP BY s.id
+     ORDER BY s.updated_at DESC`,
+  ) as StoredSessionRow[];
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    createdAt: Number(row.created_at),
+    updatedAt: Number(row.updated_at),
+    messageCount: Number(row.message_count ?? 0),
+  }));
+}
+
+export function createChatSession(id: string, title = 'Yeni sohbet'): ChatSession {
+  const database = handle();
+  createSessionRow(database, id, title);
+  const row = database.get('SELECT id, title, created_at, updated_at FROM chat_sessions WHERE id = ?', [
+    id,
+  ]) as StoredSessionRow;
+  return {
+    id: row.id,
+    title: row.title,
+    createdAt: Number(row.created_at),
+    updatedAt: Number(row.updated_at),
+    messageCount: 0,
+  };
+}
+
+export function deleteChatSession(id: string): void {
+  const database = handle();
+  database.run('DELETE FROM chat_messages WHERE session_id = ?', [id]);
+  database.run('DELETE FROM chat_sessions WHERE id = ?', [id]);
+  ensureChatSessions(database);
+}
+
+export function appendChatMessage(sessionId: string, message: ChatMessage): void {
+  const database = handle();
+  const session = database.get('SELECT id FROM chat_sessions WHERE id = ?', [sessionId]) as
+    | { id: string }
+    | undefined;
+  if (!session) createSessionRow(database, sessionId, 'Yeni sohbet');
+
   const { changeIds, approvalIds, ...rest } = message;
-  handle().run(
-    `INSERT OR REPLACE INTO chat_messages (id, role, content, created_at, agent_role, meta)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+  database.run(
+    `INSERT OR REPLACE INTO chat_messages (id, role, content, created_at, agent_role, meta, session_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
       message.id,
       message.role,
@@ -260,15 +359,30 @@ export function appendChatMessage(message: ChatMessage): void {
       message.createdAt,
       message.agentRole ?? null,
       JSON.stringify({ ...rest, changeIds, approvalIds }),
+      sessionId,
     ],
   );
+
+  const now = Date.now();
+  if (message.role === 'user') {
+    database.run(
+      `UPDATE chat_sessions
+       SET updated_at = ?,
+           title = CASE WHEN title IN ('Yeni sohbet', 'Sohbet', '') THEN ? ELSE title END
+       WHERE id = ?`,
+      [now, titleFromMessage(message.content), sessionId],
+    );
+  } else {
+    database.run('UPDATE chat_sessions SET updated_at = ? WHERE id = ?', [now, sessionId]);
+  }
 }
 
-export function loadChatMessages(limit = 200): ChatMessage[] {
+export function loadChatMessages(sessionId: string, limit = 400): ChatMessage[] {
   const rows = handle().all(
     `SELECT id, role, content, created_at, agent_role, meta FROM chat_messages
+     WHERE session_id = ?
      ORDER BY created_at ASC LIMIT ?`,
-    [limit],
+    [sessionId, limit],
   ) as StoredMessageRow[];
   return rows.map((row) => {
     let meta: Partial<ChatMessage> = {};
@@ -290,6 +404,8 @@ export function loadChatMessages(limit = 200): ChatMessage[] {
   });
 }
 
-export function clearChatMessages(): void {
-  handle().run('DELETE FROM chat_messages');
+export function clearChatMessages(sessionId: string): void {
+  const database = handle();
+  database.run('DELETE FROM chat_messages WHERE session_id = ?', [sessionId]);
+  database.run('UPDATE chat_sessions SET updated_at = ? WHERE id = ?', [Date.now(), sessionId]);
 }

@@ -2,6 +2,7 @@ import type {
   AppInfo,
   AppSettings,
   ChatMessage,
+  ChatSession,
   CommandResult,
   CompletionRequest,
   CompletionResult,
@@ -77,9 +78,12 @@ export interface AdiutorApi {
     set(settings: AppSettings): Promise<AppSettings>;
   };
   chat: {
-    load(): Promise<ChatMessage[]>;
-    append(message: ChatMessage): Promise<void>;
-    clear(): Promise<void>;
+    load(sessionId: string): Promise<ChatMessage[]>;
+    append(sessionId: string, message: ChatMessage): Promise<void>;
+    clear(sessionId: string): Promise<void>;
+    sessions(): Promise<ChatSession[]>;
+    create(id: string, title: string): Promise<ChatSession>;
+    remove(id: string): Promise<void>;
   };
   terminal: {
     start(cwd: string): Promise<TerminalStartResult>;

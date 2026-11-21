@@ -1,10 +1,21 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from '@/state/store';
 import { formatTokens } from '@shared/tokens';
 import { Markdown } from './ui/Markdown';
 import { ModelPicker } from './ui/ModelPicker';
 import { Badge, IconButton, StatusDot } from './ui/primitives';
-import { AlertIcon, PlayIcon, SendIcon, StopIcon, TrashIcon, XIcon } from './ui/Icons';
+import {
+  AlertIcon,
+  ChevronDown,
+  HistoryIcon,
+  PlayIcon,
+  PlusIcon,
+  SendIcon,
+  StopIcon,
+  TrashIcon,
+  WidenIcon,
+  XIcon,
+} from './ui/Icons';
 import { ApprovalList } from './ApprovalList';
 import { formatTime, roleLabel, taskStatusLabel } from '@/lib/format';
 import type { ChatMessage } from '@shared/types';
@@ -30,7 +41,28 @@ function MessageMeta({ message }: { message: ChatMessage }) {
   );
 }
 
-export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+function sessionStamp(timestamp: number): string {
+  const date = new Date(timestamp);
+  const today = new Date();
+  const sameDay =
+    date.getDate() === today.getDate() &&
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear();
+  if (sameDay) return formatTime(timestamp);
+  return date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
+}
+
+export function ChatPanel({
+  open,
+  onClose,
+  wide,
+  onToggleWide,
+}: {
+  open: boolean;
+  onClose: () => void;
+  wide: boolean;
+  onToggleWide: () => void;
+}) {
   const chat = useStore((state) => state.chat);
   const chatInput = useStore((state) => state.chatInput);
   const setChatInput = useStore((state) => state.setChatInput);
@@ -53,6 +85,13 @@ export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => voi
   const setView = useStore((state) => state.setView);
   const clearChat = useStore((state) => state.clearChat);
   const saveSettings = useStore((state) => state.saveSettings);
+  const chatSessions = useStore((state) => state.chatSessions);
+  const activeSessionId = useStore((state) => state.activeSessionId);
+  const newChatSession = useStore((state) => state.newChatSession);
+  const selectChatSession = useStore((state) => state.selectChatSession);
+  const deleteChatSession = useStore((state) => state.deleteChatSession);
+
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const messagesRef = useRef<HTMLDivElement | null>(null);
 
@@ -66,6 +105,7 @@ export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => voi
   const pendingApprovals = approvals.filter((approval) => approval.status === 'pending').length;
   const running = task.status === 'running' || task.status === 'awaiting-approval';
   const provider = providerStatus?.providers.find((item) => item.id === settings.provider);
+  const activeSession = chatSessions.find((session) => session.id === activeSessionId) ?? null;
   const missingKey = providerStatus && provider?.requiresApiKey
     ? providerStatus.apiKeys[settings.provider] !== true
     : false;
@@ -103,9 +143,16 @@ export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => voi
           </button>
         ) : null}
         <IconButton
-          label="Sohbet geçmişini temizle"
+          label={wide ? 'Sohbeti daralt' : 'Sohbeti genişlet'}
+          aria-pressed={wide}
+          onClick={onToggleWide}
+        >
+          <WidenIcon size={14} />
+        </IconButton>
+        <IconButton
+          label="Bu sohbetin mesajlarını temizle"
           onClick={() => {
-            if (window.confirm('Sohbet geçmişi kalıcı olarak silinsin mi?')) void clearChat();
+            if (window.confirm('Bu sohbetin mesajları kalıcı olarak silinsin mi?')) void clearChat();
           }}
         >
           <TrashIcon size={14} />
@@ -114,6 +161,70 @@ export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => voi
           <XIcon size={15} />
         </IconButton>
       </div>
+
+      <div className="chat-session-bar">
+        <button
+          type="button"
+          className="chat-session-toggle"
+          aria-expanded={historyOpen}
+          aria-controls="chat-history"
+          onClick={() => setHistoryOpen((current) => !current)}
+          title={activeSession ? `${activeSession.title} · ${activeSession.messageCount} mesaj` : 'Sohbetler'}
+        >
+          <HistoryIcon size={13} />
+          <span className="chat-session-title">{activeSession?.title ?? 'Yeni sohbet'}</span>
+          {chatSessions.length > 1 ? <span className="chat-session-count">{chatSessions.length}</span> : null}
+          <ChevronDown size={11} />
+        </button>
+        <IconButton label="Yeni sohbet" onClick={() => void newChatSession()}>
+          <PlusIcon size={14} />
+        </IconButton>
+      </div>
+
+      {historyOpen ? (
+        <div className="chat-history" id="chat-history" aria-label="Sohbet geçmişi">
+          <div className="chat-history-head">
+            <span>Sohbet geçmişi</span>
+            <span>{chatSessions.length} sohbet</span>
+          </div>
+          <div className="chat-history-list" role="list">
+            {chatSessions.map((session) => (
+              <div
+                key={session.id}
+                role="listitem"
+                className={`chat-history-item${session.id === activeSessionId ? ' is-active' : ''}`}
+              >
+                <button
+                  type="button"
+                  className="chat-history-open"
+                  aria-current={session.id === activeSessionId ? 'true' : undefined}
+                  onClick={() => {
+                    void selectChatSession(session.id);
+                    setHistoryOpen(false);
+                  }}
+                >
+                  <span className="chat-history-title">{session.title}</span>
+                  <span className="chat-history-meta">
+                    {sessionStamp(session.updatedAt)} · {session.messageCount} mesaj
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="chat-history-delete"
+                  aria-label={`${session.title} sohbetini sil`}
+                  onClick={() => {
+                    if (window.confirm(`“${session.title}” sohbeti silinsin mi?`)) {
+                      void deleteChatSession(session.id);
+                    }
+                  }}
+                >
+                  <TrashIcon size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="chat-context-bar">
         <button

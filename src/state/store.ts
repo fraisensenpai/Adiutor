@@ -14,6 +14,7 @@ import type {
   AppInfo,
   AppSettings,
   ChatMessage,
+  ChatSession,
   ContextItem,
   FileTreeNode,
   IndexProgress,
@@ -74,6 +75,8 @@ interface AppState {
   contextItems: ContextItem[];
   contextPreviewOpen: boolean;
   chat: ChatMessage[];
+  chatSessions: ChatSession[];
+  activeSessionId: string | null;
   chatInput: string;
   chatBusy: boolean;
   settings: AppSettings;
@@ -124,6 +127,10 @@ interface AppActions {
   setChatInput(value: string): void;
   sendChat(): Promise<void>;
   clearChat(): Promise<void>;
+  refreshChatSessions(): Promise<void>;
+  newChatSession(): Promise<void>;
+  selectChatSession(id: string): Promise<void>;
+  deleteChatSession(id: string): Promise<void>;
   startTask(title: string): Promise<void>;
   stopTask(): void;
   approve(id: string): void;
@@ -274,8 +281,13 @@ const WELCOME = (status: ProviderStatus | null, settings: AppSettings): ChatMess
 });
 
 function pushChat(set: (partial: Partial<AppState>) => void, get: () => AppStore, message: ChatMessage): void {
+  const sessionId = get().activeSessionId;
   set({ chat: [...get().chat, message] });
-  void bridge.chat.append(message).catch(() => undefined);
+  if (!sessionId) return;
+  void bridge.chat
+    .append(sessionId, message)
+    .then(() => get().refreshChatSessions())
+    .catch(() => undefined);
 }
 
 export const useStore = create<AppStore>()((set, get) => ({
@@ -295,6 +307,8 @@ export const useStore = create<AppStore>()((set, get) => ({
   contextItems: [],
   contextPreviewOpen: false,
   chat: [],
+  chatSessions: [],
+  activeSessionId: null,
   chatInput: '',
   chatBusy: false,
   settings: DEFAULT_SETTINGS,
@@ -320,26 +334,30 @@ export const useStore = create<AppStore>()((set, get) => ({
     if (get().initialized) return;
     set({ initialized: true });
     try {
-      const [settings, providerStatus, chat, usage, summary, info] = await Promise.all([
+      const [settings, providerStatus, usage, summary, info, sessions] = await Promise.all([
         bridge.settings.get(),
         bridge.providers.status(),
-        bridge.chat.load(),
         bridge.usage.list(),
         bridge.usage.summary(),
         bridge.app.info(),
+        bridge.chat.sessions(),
       ]);
+      const active = sessions[0] ?? null;
+      const messages = active ? await bridge.chat.load(active.id) : [];
       set({
         settings,
         providerStatus,
         usage,
         usageSummaryData: summary,
         appInfo: info,
+        chatSessions: sessions,
+        activeSessionId: active?.id ?? null,
         agents: initialAgents({
           planner: settings.agents.planner.model,
           coder: settings.agents.coder.model,
           reviewer: settings.agents.reviewer.model,
         }),
-        chat: chat.length > 0 ? chat : [WELCOME(providerStatus, settings)],
+        chat: messages.length > 0 ? messages : [WELCOME(providerStatus, settings)],
       });
       subscribeEvents(set, get);
     } catch (error) {
@@ -624,15 +642,70 @@ export const useStore = create<AppStore>()((set, get) => ({
   },
 
   async clearChat() {
+    const sessionId = get().activeSessionId;
+    if (!sessionId) return;
     try {
-      await bridge.chat.clear();
+      await bridge.chat.clear(sessionId);
       set({ chat: [WELCOME(get().providerStatus, get().settings)] });
-      get().notify('Sohbet geçmişi temizlendi.', 'success');
+      await get().refreshChatSessions();
+      get().notify('Bu sohbetin mesajları temizlendi.', 'success');
     } catch (error) {
       get().notify(
         error instanceof Error ? error.message : 'Sohbet geçmişi temizlenemedi.',
         'error',
       );
+    }
+  },
+
+  async refreshChatSessions() {
+    try {
+      const sessions = await bridge.chat.sessions();
+      set({ chatSessions: sessions });
+    } catch {
+      /* yoksay */
+    }
+  },
+
+  async newChatSession() {
+    try {
+      const session = await bridge.chat.create(makeId('session'), 'Yeni sohbet');
+      set({
+        chatSessions: [session, ...get().chatSessions],
+        activeSessionId: session.id,
+        chat: [WELCOME(get().providerStatus, get().settings)],
+      });
+    } catch (error) {
+      get().notify(error instanceof Error ? error.message : 'Yeni sohbet açılamadı.', 'error');
+    }
+  },
+
+  async selectChatSession(id) {
+    if (id === get().activeSessionId) return;
+    try {
+      const messages = await bridge.chat.load(id);
+      set({
+        activeSessionId: id,
+        chat: messages.length > 0 ? messages : [WELCOME(get().providerStatus, get().settings)],
+      });
+    } catch (error) {
+      get().notify(error instanceof Error ? error.message : 'Sohbet açılamadı.', 'error');
+    }
+  },
+
+  async deleteChatSession(id) {
+    try {
+      await bridge.chat.remove(id);
+      const sessions = await bridge.chat.sessions();
+      const active = sessions[0] ?? null;
+      const messages = active ? await bridge.chat.load(active.id) : [];
+      set({
+        chatSessions: sessions,
+        activeSessionId: active?.id ?? null,
+        chat: messages.length > 0 ? messages : [WELCOME(get().providerStatus, get().settings)],
+      });
+      get().notify('Sohbet silindi.', 'success');
+    } catch (error) {
+      get().notify(error instanceof Error ? error.message : 'Sohbet silinemedi.', 'error');
     }
   },
 

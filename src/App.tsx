@@ -23,6 +23,7 @@ import { SettingsView } from '@/components/SettingsView';
 import { ReviewDrawer } from '@/components/ReviewDrawer';
 import { ContextPreview } from '@/components/ContextPreview';
 import { Toast } from '@/components/ui/primitives';
+import { resolveTheme, useSystemTheme } from '@/lib/theme';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null };
@@ -73,7 +74,7 @@ const DEFAULT_LAYOUT: LayoutState = {
   sidebarOpen: true,
   chatOpen: true,
   sidebarWidth: 244,
-  chatWidth: 348,
+  chatWidth: 420,
   bottomHeight: 220,
 };
 
@@ -119,10 +120,18 @@ function Workspace() {
   const reviewOpen = useStore((state) => state.reviewOpen);
   const contextPreviewOpen = useStore((state) => state.contextPreviewOpen);
 
+  const themeMode = useStore((state) => state.settings.theme);
+  const systemTheme = useSystemTheme();
+
   const [layout, setLayout] = useState<LayoutState>(readLayout);
   const [compact, setCompact] = useState(() => window.innerWidth < 1000);
   const autoChat = useRef(false);
   const autoSidebar = useRef(false);
+  const previousChatWidth = useRef(DEFAULT_LAYOUT.chatWidth);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = resolveTheme(themeMode, systemTheme);
+  }, [themeMode, systemTheme]);
 
   useEffect(() => {
     void init();
@@ -169,7 +178,7 @@ function Workspace() {
     if (compact) return;
     setLayout((current) => ({
       ...current,
-      chatWidth: Math.min(current.chatWidth, Math.max(300, Math.round(window.innerWidth * 0.42))),
+      chatWidth: Math.min(current.chatWidth, Math.max(340, Math.round(window.innerWidth * 0.5))),
     }));
   }, [compact]);
 
@@ -177,8 +186,22 @@ function Workspace() {
     event.preventDefault();
     trackDrag((move) => {
       const width = Math.round(window.innerWidth - move.clientX);
-      update({ chatWidth: Math.min(Math.max(width, 280), Math.min(620, window.innerWidth - 480)) });
+      update({ chatWidth: Math.min(Math.max(width, 320), Math.min(900, window.innerWidth - 480)) });
     }, 'x');
+  };
+
+  const wideChat = layout.chatWidth >= 600;
+  const toggleWideChat = () => {
+    setLayout((current) => {
+      if (current.chatWidth >= 600) {
+        return { ...current, chatWidth: previousChatWidth.current || DEFAULT_LAYOUT.chatWidth };
+      }
+      previousChatWidth.current = current.chatWidth;
+      return {
+        ...current,
+        chatWidth: Math.min(860, Math.max(600, Math.round(window.innerWidth * 0.52))),
+      };
+    });
   };
 
   const startSidebarDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -238,7 +261,12 @@ function Workspace() {
             aria-hidden={!layout.chatOpen}
             onPointerDown={startChatDrag}
           />
-          <ChatPanel open={layout.chatOpen} onClose={() => update({ chatOpen: false })} />
+          <ChatPanel
+            open={layout.chatOpen}
+            onClose={() => update({ chatOpen: false })}
+            wide={wideChat}
+            onToggleWide={toggleWideChat}
+          />
         </div>
       ) : (
         <main className="view-scroll" aria-label="Adiutor görünümü">

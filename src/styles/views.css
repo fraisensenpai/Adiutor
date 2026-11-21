@@ -113,7 +113,7 @@
 
 .note-warn {
   background: var(--warn-soft);
-  color: #e8d3a4;
+  color: var(--warn);
 }
 
 .note-warn svg {
@@ -822,7 +822,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(4, 6, 9, 0.55);
+  background: var(--backdrop);
   display: grid;
   place-items: center;
   z-index: 50;
@@ -982,7 +982,7 @@
 
 .diff-hunk-header {
   padding: 5px 14px;
-  color: #7b93b5;
+  color: var(--diff-hunk);
   background: rgba(121, 162, 247, 0.05);
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
@@ -1001,7 +1001,7 @@
   width: 46px;
   padding: 0 8px;
   text-align: right;
-  color: #4f5a6a;
+  color: var(--diff-gutter);
   user-select: none;
   font-size: var(--fs-2xs);
   font-variant-numeric: tabular-nums;
@@ -1011,7 +1011,7 @@
   flex: none;
   width: 16px;
   text-align: center;
-  color: #5c6778;
+  color: var(--diff-marker);
   user-select: none;
 }
 
@@ -1021,15 +1021,15 @@
   padding-right: 14px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  color: #c5cfdd;
+  color: var(--diff-text);
 }
 
 .diff-add {
-  background: rgba(79, 191, 139, 0.08);
+  background: var(--diff-add-bg);
 }
 
 .diff-add .diff-text {
-  color: #a9e3c5;
+  color: var(--diff-add-text);
 }
 
 .diff-add .diff-marker {
@@ -1037,11 +1037,11 @@
 }
 
 .diff-del {
-  background: rgba(239, 124, 128, 0.08);
+  background: var(--diff-del-bg);
 }
 
 .diff-del .diff-text {
-  color: #f2b4b6;
+  color: var(--diff-del-text);
 }
 
 .diff-del .diff-marker {
@@ -1144,4 +1144,51 @@
 
 .data-table .model-picker {
   min-width: 132px;
+}
+
+/* tema seçimi */
+.theme-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+
+.theme-option {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg-2);
+  color: var(--text-2);
+  text-align: left;
+  font-size: var(--fs-xs);
+}
+
+.theme-option:hover {
+  border-color: var(--line-strong);
+}
+
+.theme-option[aria-checked='true'] {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.theme-swatch {
+  height: 28px;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+}
+
+.theme-swatch.is-dark {
+  background: linear-gradient(120deg, #0f1217 0 58%, #79a2f7 58% 100%);
+}
+
+.theme-swatch.is-light {
+  background: linear-gradient(120deg, #f7f8fa 0 58%, #2f6fed 58% 100%);
+}
+
+.theme-swatch.is-system {
+  background: linear-gradient(100deg, #0f1217 0 50%, #f7f8fa 50% 100%);
 }

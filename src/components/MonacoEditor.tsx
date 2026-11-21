@@ -3,6 +3,8 @@ import * as monaco from 'monaco-editor';
 import editorWorker from 'monaco-editor/editor/editor.worker?worker';
 import tsWorker from 'monaco-editor/languages/features/typescript/ts.worker?worker';
 import type { Language } from '@shared/types';
+import { useStore } from '@/state/store';
+import { resolveTheme, useSystemTheme } from '@/lib/theme';
 
 declare global {
   interface Window {
@@ -55,6 +57,41 @@ function defineTheme(): void {
       'scrollbarSlider.hoverBackground': '#3a4452aa',
       'editorBracketMatch.background': '#1f2a3a',
       'editorBracketMatch.border': '#3c5375',
+    },
+  });
+  monaco.editor.defineTheme('adiutor-light', {
+    base: 'vs',
+    inherit: true,
+    rules: [
+      { token: 'comment', foreground: '7b8697', fontStyle: 'italic' },
+      { token: 'keyword', foreground: '1f4fb8' },
+      { token: 'string', foreground: '1d7a4f' },
+      { token: 'number', foreground: '9a5a00' },
+      { token: 'type', foreground: '0f6f74' },
+      { token: 'function', foreground: '6b3ec9' },
+      { token: 'variable', foreground: '232a35' },
+      { token: 'tag', foreground: '1d5fb8' },
+    ],
+    colors: {
+      'editor.background': '#ffffff',
+      'editor.foreground': '#232a35',
+      'editorLineNumber.foreground': '#b3bcc8',
+      'editorLineNumber.activeForeground': '#5b6675',
+      'editor.lineHighlightBackground': '#f4f6fa',
+      'editor.selectionBackground': '#cfe0ff',
+      'editor.inactiveSelectionBackground': '#e4ecfa',
+      'editorCursor.foreground': '#2f6fed',
+      'editorIndentGuide.background1': '#eceff4',
+      'editorIndentGuide.activeBackground1': '#d3d9e2',
+      'editorGutter.background': '#ffffff',
+      'editorWidget.background': '#f7f8fa',
+      'editorWidget.border': '#dde1e8',
+      'editorSuggestWidget.background': '#f7f8fa',
+      'editorSuggestWidget.selectedBackground': '#e6ecf7',
+      'scrollbarSlider.background': '#c7ced880',
+      'scrollbarSlider.hoverBackground': '#aab4c2aa',
+      'editorBracketMatch.background': '#eaf1ff',
+      'editorBracketMatch.border': '#9dbcff',
     },
   });
 }
@@ -125,6 +162,9 @@ export function MonacoEditor({
   revealLine,
   onRevealDone,
 }: MonacoEditorProps) {
+  const themeMode = useStore((state) => state.settings.theme);
+  const systemTheme = useSystemTheme();
+  const themeName = `adiutor-${resolveTheme(themeMode, systemTheme)}`;
   const hostRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const suppressChange = useRef(false);
@@ -142,7 +182,7 @@ export function MonacoEditor({
 
     const editor = monaco.editor.create(hostRef.current, {
       model: null,
-      theme: 'adiutor-dark',
+      theme: themeName,
       automaticLayout: true,
       fontSize: 13,
       lineHeight: 20,
@@ -230,6 +270,10 @@ export function MonacoEditor({
       if (position) editor.setPosition(position);
     }
   }, [content]);
+
+  useEffect(() => {
+    monaco.editor.setTheme(themeName);
+  }, [themeName]);
 
   useEffect(() => {
     const editor = editorRef.current;

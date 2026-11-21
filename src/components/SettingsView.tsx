@@ -4,9 +4,15 @@ import { Badge, SectionTitle } from './ui/primitives';
 import { ModelPicker } from './ui/ModelPicker';
 import { InfoIcon, ShieldIcon } from './ui/Icons';
 import { roleLabel } from '@/lib/format';
-import type { AgentRole } from '@shared/types';
+import type { AgentRole, ThemeMode } from '@shared/types';
 
 const CONTEXT_OPTIONS = [2000, 4000, 6000, 10000, 16000];
+
+const THEMES: Array<{ id: ThemeMode; label: string; hint: string }> = [
+  { id: 'dark', label: 'Koyu', hint: 'düşük ışık' },
+  { id: 'light', label: 'Açık', hint: 'gündüz' },
+  { id: 'system', label: 'Sistem', hint: 'otomatik' },
+];
 
 export function SettingsView() {
   const settings = useStore((state) => state.settings);
@@ -255,6 +261,33 @@ export function SettingsView() {
         </div>
 
         <div className="stack">
+          <section className="panel panel-pad" aria-labelledby="appearance-title">
+            <div id="appearance-title">
+              <SectionTitle hint="editör ve arayüz birlikte değişir">Görünüm</SectionTitle>
+            </div>
+            <div className="theme-options" role="radiogroup" aria-label="Tema">
+              {THEMES.map((theme) => (
+                <button
+                  key={theme.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={settings.theme === theme.id}
+                  className="theme-option"
+                  onClick={() => void saveSettings({ theme: theme.id })}
+                >
+                  <span className={`theme-swatch is-${theme.id}`} aria-hidden="true" />
+                  <span>
+                    <strong>{theme.label}</strong>
+                    <span className="dim"> · {theme.hint}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+            <span className="field-hint">
+              “Sistem” seçildiğinde işletim sisteminin açık/koyu ayarı izlenir.
+            </span>
+          </section>
+
           <section className="panel panel-pad" aria-labelledby="security-title">
             <div id="security-title">
               <SectionTitle>Güvenlik</SectionTitle>

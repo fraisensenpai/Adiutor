@@ -32,6 +32,9 @@ export const IPC = {
   chatLoad: 'chat:load',
   chatAppend: 'chat:append',
   chatClear: 'chat:clear',
+  chatSessions: 'chat:sessions',
+  chatCreate: 'chat:create',
+  chatDelete: 'chat:delete',
 
   terminalStart: 'terminal:start',
   terminalWrite: 'terminal:write',
