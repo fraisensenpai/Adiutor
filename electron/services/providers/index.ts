@@ -1,8 +1,13 @@
 import type { ProviderId, ProviderInfo, ProviderStatus } from '../../../src/shared/types';
 import { anthropicProvider } from './anthropic';
 import { deepseekProvider } from './deepseek';
+import { geminiProvider } from './gemini';
+import { groqProvider } from './groq';
 import { grokProvider } from './grok';
+import { mistralProvider } from './mistral';
+import { ollamaProvider } from './ollama';
 import { openaiProvider } from './openai';
+import { openrouterProvider } from './openrouter';
 import type { ProviderAdapter } from './types';
 import { encryptionAvailable, hasApiKey, keyStorageLabel } from '../secrets';
 
@@ -10,8 +15,13 @@ import { encryptionAvailable, hasApiKey, keyStorageLabel } from '../secrets';
 const adapters: Record<ProviderId, ProviderAdapter> = {
   openai: openaiProvider,
   anthropic: anthropicProvider,
+  gemini: geminiProvider,
   deepseek: deepseekProvider,
   grok: grokProvider,
+  mistral: mistralProvider,
+  groq: groqProvider,
+  openrouter: openrouterProvider,
+  ollama: ollamaProvider,
 };
 
 export function getAdapter(provider: ProviderId): ProviderAdapter {

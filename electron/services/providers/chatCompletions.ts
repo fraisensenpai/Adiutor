@@ -1,4 +1,4 @@
-import type { CompletionResult, ProviderId, ProviderInfo } from '../../../src/shared/types';
+import type { CompletionResult, ModelOption, ProviderId, ProviderInfo } from '../../../src/shared/types';
 import { estimateTokens } from '../../../src/shared/tokens';
 import { fetchWithRetry, retryAfterSeconds } from './http';
 import { ProviderFailure, type ProviderAdapter, type ProviderContext } from './types';
@@ -6,21 +6,28 @@ import { ProviderFailure, type ProviderAdapter, type ProviderContext } from './t
 /**
  * OpenAI uyumlu sohbet tamamlama adaptörü.
  *
- * OpenAI, DeepSeek ve xAI (Grok) aynı `/chat/completions` sözleşmesini kullanır;
- * yalnızca uç nokta, model listesi ve kimlik doğrulama başlığı değişir.
+ * OpenAI, Gemini, DeepSeek, xAI (Grok), Mistral, Groq, OpenRouter ve yerel
+ * Ollama aynı `/chat/completions` sözleşmesini kullanır; yalnızca uç nokta,
+ * model listesi ve kimlik doğrulama değişir.
  */
 
 export interface ChatCompletionsConfig {
   id: ProviderId;
   label: string;
   endpoint: string;
-  models: string[];
+  models: ModelOption[];
   defaultModel: string;
   note: string;
   keyHint: string;
   docsUrl: string;
+  /** Yerel sağlayıcılar gibi anahtar istemeyen uç noktalar için false. */
+  requiresApiKey?: boolean;
   /** Sağlayıcının JSON modu desteklemediği durumlar için false. */
   jsonMode?: boolean;
+  /** Anahtarı `Authorization: Bearer` yerine özel bir başlıkta isteyen sağlayıcılar. */
+  apiKeyHeader?: string;
+  /** Sağlayıcının istediği ek başlıklar (ör. OpenRouter sıralaması). */
+  headers?: Record<string, string>;
 }
 
 const REQUEST_TIMEOUT_MS = 120_000;
@@ -76,10 +83,12 @@ function errorMessage(
 }
 
 export function createChatCompletionsProvider(config: ChatCompletionsConfig): ProviderAdapter {
+  const requiresApiKey = config.requiresApiKey !== false;
+
   const info: ProviderInfo = {
     id: config.id,
     label: config.label,
-    requiresApiKey: true,
+    requiresApiKey,
     models: config.models,
     defaultModel: config.defaultModel,
     note: config.note,
@@ -90,7 +99,7 @@ export function createChatCompletionsProvider(config: ChatCompletionsConfig): Pr
   return {
     info,
     async complete(request, context: ProviderContext): Promise<CompletionResult> {
-      if (!context.apiKey) {
+      if (requiresApiKey && !context.apiKey) {
         throw new ProviderFailure(
           context.hasStoredKey
             ? `${config.label} anahtarı kayıtlı görünüyor ama işletim sistemi kasasından okunamadı. Ayarlar → Sağlayıcı bölümünden anahtarı yeniden kaydedin.`
@@ -122,7 +131,12 @@ export function createChatCompletionsProvider(config: ChatCompletionsConfig): Pr
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${context.apiKey}`,
+              ...(config.apiKeyHeader && context.apiKey
+                ? { [config.apiKeyHeader]: context.apiKey }
+                : context.apiKey
+                  ? { Authorization: `Bearer ${context.apiKey}` }
+                  : {}),
+              ...(config.headers ?? {}),
             },
             body: JSON.stringify(body),
           },
@@ -179,7 +193,9 @@ export function createChatCompletionsProvider(config: ChatCompletionsConfig): Pr
         }
         // Ağ hatalarında istek başlıkları/anahtar asla mesaja eklenmez.
         throw new ProviderFailure(
-          `${config.label} bağlantısı kurulamadı. İnternet bağlantısını kontrol edin.`,
+          requiresApiKey
+            ? `${config.label} bağlantısı kurulamadı. İnternet bağlantısını kontrol edin.`
+            : `${config.label} sunucusuna ulaşılamadı. Yerel sunucunun çalıştığını kontrol edin.`,
           'network',
         );
       } finally {

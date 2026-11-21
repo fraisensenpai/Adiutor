@@ -144,13 +144,33 @@ export interface ContextBundle {
 /* Sağlayıcılar                                                        */
 /* ------------------------------------------------------------------ */
 
-export type ProviderId = 'openai' | 'anthropic' | 'deepseek' | 'grok';
+export type ProviderId =
+  | 'openai'
+  | 'anthropic'
+  | 'gemini'
+  | 'deepseek'
+  | 'grok'
+  | 'mistral'
+  | 'groq'
+  | 'openrouter'
+  | 'ollama';
+
+export interface ModelOption {
+  /** Sağlayıcıya gönderilen model kimliği. */
+  id: string;
+  /** Arayüzde gösterilen okunur ad. */
+  label: string;
+  /** Kısa rol etiketi: amiral gemisi, hızlı, ekonomik… */
+  tag?: string;
+  /** Bağlam penceresi veya kullanım notu. */
+  hint?: string;
+}
 
 export interface ProviderInfo {
   id: ProviderId;
   label: string;
   requiresApiKey: boolean;
-  models: string[];
+  models: ModelOption[];
   defaultModel: string;
   note: string;
   keyHint: string;

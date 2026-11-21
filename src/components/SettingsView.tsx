@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '@/state/store';
 import { Badge, SectionTitle } from './ui/primitives';
+import { ModelPicker } from './ui/ModelPicker';
 import { InfoIcon, ShieldIcon } from './ui/Icons';
 import { roleLabel } from '@/lib/format';
 import type { AgentRole } from '@shared/types';
@@ -23,6 +24,8 @@ export function SettingsView() {
 
   const provider = providerStatus?.providers.find((item) => item.id === settings.provider);
   const hasKey = providerStatus?.apiKeys[settings.provider] === true;
+  const needsKey = provider?.requiresApiKey !== false;
+  const models = provider?.models ?? [];
 
   const submitKey = async () => {
     if (!apiKeyInput.trim()) return;
@@ -60,16 +63,26 @@ export function SettingsView() {
                     void setProvider(item.id);
                   }}
                 >
-                  <strong>{item.label}</strong>
-                  <span className="provider-model">{item.defaultModel}</span>
-                  <span className="provider-key-state">
-                    <span
-                      className={`status-dot ${
-                        providerStatus?.apiKeys[item.id] ? 'status-dot-done' : 'status-dot-idle'
-                      }`}
-                      aria-hidden="true"
-                    />
-                    {providerStatus?.apiKeys[item.id] ? 'anahtar kayıtlı' : 'anahtar yok'}
+                  <span className="provider-head">
+                    <strong>{item.label}</strong>
+                    <span className="provider-key-state">
+                      <span
+                        className={`status-dot ${
+                          !item.requiresApiKey || providerStatus?.apiKeys[item.id]
+                            ? 'status-dot-done'
+                            : 'status-dot-idle'
+                        }`}
+                        aria-hidden="true"
+                      />
+                      {!item.requiresApiKey
+                        ? 'anahtarsız'
+                        : providerStatus?.apiKeys[item.id]
+                          ? 'kayıtlı'
+                          : 'anahtar yok'}
+                    </span>
+                  </span>
+                  <span className="provider-model">
+                    {item.models.find((model) => model.id === item.defaultModel)?.label ?? item.defaultModel}
                   </span>
                 </button>
               ))}
@@ -79,23 +92,21 @@ export function SettingsView() {
               <label className="field-label" htmlFor="provider-model">
                 Varsayılan model
               </label>
-              <input
+              <ModelPicker
                 id="provider-model"
-                className="input"
-                list="provider-models"
+                models={models}
                 value={settings.model}
-                onChange={(event) => void saveSettings({ model: event.target.value })}
-                spellCheck={false}
+                providerLabel={provider?.label}
+                ariaLabel="Varsayılan model"
+                onChange={(model) => void saveSettings({ model })}
               />
-              <datalist id="provider-models">
-                {(provider?.models ?? []).map((model) => (
-                  <option key={model} value={model} />
-                ))}
-              </datalist>
-              <span className="field-hint">Model kimliğini elle de yazabilirsiniz.</span>
+              <span className="field-hint">
+                {models.length} model listelendi; kimliği elle de yazabilirsiniz.
+              </span>
             </div>
 
-            <div className="field">
+            {needsKey ? (
+              <div className="field">
               <label className="field-label" htmlFor="api-key">
                 {provider?.label ?? 'Sağlayıcı'} API anahtarı
               </label>
@@ -135,6 +146,15 @@ export function SettingsView() {
                 Anahtar işletim sisteminin güvenli kasasında şifreli tutulur ve yalnızca ana süreçte okunur.
               </span>
             </div>
+            ) : (
+              <div className="note" style={{ marginTop: 12 }}>
+                <InfoIcon size={14} />
+                <span>
+                  Yerel sunucu anahtar istemez. İstekler <code>127.0.0.1:11434</code> adresine gider ve makinenizden
+                  çıkmaz; modelin indirilmiş olması gerekir.
+                </span>
+              </div>
+            )}
 
             <div className="key-status">
               <ShieldIcon size={14} />
@@ -143,7 +163,9 @@ export function SettingsView() {
                   ? `Güvenli kasa: ${providerStatus.keyStorage}`
                   : 'Güvenli kasa kullanılamıyor; anahtar kaydedilmez.'}
               </span>
-              <Badge tone={hasKey ? 'success' : 'neutral'}>{hasKey ? 'hazır' : 'anahtar yok'}</Badge>
+              <Badge tone={hasKey || !needsKey ? 'success' : 'neutral'}>
+                {!needsKey ? 'yerel' : hasKey ? 'hazır' : 'anahtar yok'}
+              </Badge>
             </div>
           </section>
 
@@ -166,13 +188,13 @@ export function SettingsView() {
                       <strong>{roleLabel(role)}</strong>
                     </td>
                     <td>
-                      <input
-                        className="input"
-                        list="provider-models"
+                      <ModelPicker
+                        models={models}
                         value={settings.agents[role].model}
-                        onChange={(event) => setAgentModel(role, event.target.value)}
-                        aria-label={`${roleLabel(role)} modeli`}
-                        spellCheck={false}
+                        providerLabel={provider?.label}
+                        ariaLabel={`${roleLabel(role)} modeli`}
+                        compact
+                        onChange={(model) => setAgentModel(role, model)}
                       />
                     </td>
                     <td className="num">

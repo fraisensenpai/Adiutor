@@ -2,7 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { app } from 'electron';
 import type { AppSettings, UsageRecord, UsageSummary, ChatMessage } from '../../src/shared/types';
-import { DEFAULT_SETTINGS, DEFAULT_MODEL, isProviderId } from '../../src/shared/settings';
+import { DEFAULT_SETTINGS, DEFAULT_MODEL, isProviderId, migrateModel } from '../../src/shared/settings';
 import { stripInvokePrefix } from '../../src/shared/errors';
 
 /**
@@ -101,14 +101,18 @@ export function getSettings(): AppSettings {
       ...DEFAULT_SETTINGS,
       ...parsed,
       provider,
-      model: staleModel ? DEFAULT_MODEL : parsed.model!,
+      model: staleModel ? DEFAULT_MODEL : migrateModel(parsed.model),
       agents: staleModel
         ? {
             planner: { ...agents.planner, model: DEFAULT_MODEL },
             coder: { ...agents.coder, model: DEFAULT_MODEL },
             reviewer: { ...agents.reviewer, model: DEFAULT_MODEL },
           }
-        : agents,
+        : {
+            planner: { ...agents.planner, model: migrateModel(agents.planner.model) },
+            coder: { ...agents.coder, model: migrateModel(agents.coder.model) },
+            reviewer: { ...agents.reviewer, model: migrateModel(agents.reviewer.model) },
+          },
     };
   } catch {
     return DEFAULT_SETTINGS;

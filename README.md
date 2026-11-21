@@ -30,7 +30,7 @@
 
 Instead of one endless chat, work is split between three agents — a **planner**, a **coder** and a **reviewer**. Each hand-off is visible on a task graph, every proposed file change opens as a real diff, and every command waits for a click. Nothing is written, executed or sent anywhere behind your back.
 
-It runs entirely on your machine. The only network traffic is the one you explicitly configure — requests to the provider whose key you enter yourself: **OpenAI**, **Anthropic Claude**, **DeepSeek** or **xAI Grok**.
+It runs entirely on your machine. The only network traffic is the one you explicitly configure — requests to the provider whose key you enter yourself: **OpenAI**, **Anthropic Claude**, **Google Gemini**, **DeepSeek**, **xAI Grok**, **Mistral**, **Groq** or **OpenRouter**, and, if you prefer, a local **Ollama** server that needs no key at all.
 
 ## Why it feels different
 
@@ -132,16 +132,21 @@ Windows, macOS and Linux are all supported. If npm blocks install scripts, the E
 
 ### Add a provider key
 
-1. Open **Settings → Provider** and pick OpenAI, Claude, DeepSeek or Grok.
-2. Paste that provider's API key. It is encrypted with the OS keychain (DPAPI, Keychain, libsecret) and never written to the database, logs or chat.
-3. Choose a model (or type any model ID the provider supports), then pick a model per agent if you like.
+1. Open **Settings → Provider** and pick a provider.
+2. Paste that provider's API key. It is encrypted with the OS keychain (DPAPI, Keychain, libsecret) and never written to the database, logs or chat. Ollama runs locally and needs no key.
+3. Pick a model from the searchable list — every entry shows a readable name, the provider's model ID and its role (flagship, fast, economical…) — or type any model ID the provider supports. Each agent can use its own model.
 
 | Provider | Endpoint | Default model |
 |---|---|---|
-| OpenAI | `api.openai.com/v1` | `gpt-4.1-mini` |
-| Claude | `api.anthropic.com/v1/messages` | `claude-sonnet-4-5` |
-| DeepSeek | `api.deepseek.com/v1` | `deepseek-chat` |
-| Grok | `api.x.ai/v1` | `grok-4` |
+| OpenAI | `api.openai.com/v1` | `gpt-6.2-sol` |
+| Claude | `api.anthropic.com/v1/messages` | `claude-sonnet-5-5` |
+| Gemini | `generativelanguage.googleapis.com/v1beta/openai` | `gemini-4-argon` |
+| DeepSeek | `api.deepseek.com/v1` | `deepseek-flash` |
+| Grok | `api.x.ai/v1` | `grok-4.7` |
+| Mistral | `api.mistral.ai/v1` | `mistral-large-latest` |
+| Groq | `api.groq.com/openai/v1` | `openai/gpt-oss-120b` |
+| OpenRouter | `openrouter.ai/api/v1` | `openrouter/auto` |
+| Ollama (local) | `127.0.0.1:11434/v1` | `qwen2.5-coder:7b` |
 
 > Every request is made directly from the main process to the selected provider. No proxy, no account, no telemetry.
 
@@ -164,7 +169,7 @@ graph LR
 - **Renderer** (React + zustand) owns the UI and the task runner; it never touches Node APIs directly.
 - **Main process** (Electron) owns the filesystem, the index, SQLite, the OS keychain, the terminal and the provider calls, exposed through a typed `contextBridge` API.
 - **Indexer** parses files with `web-tree-sitter` (TypeScript, TSX, JS, JSX, Python) and falls back to a regex extractor, saying so in the UI, when a grammar cannot load.
-- **Providers** are a small adapter registry: one OpenAI-compatible chat-completions adapter shared by OpenAI, DeepSeek and Grok, plus a dedicated Anthropic Messages adapter for Claude. A failed JSON contract is reported as an error, never silently retried with made-up data.
+- **Providers** are a small adapter registry: one OpenAI-compatible chat-completions adapter shared by OpenAI, Gemini, DeepSeek, Grok, Mistral, Groq, OpenRouter and Ollama, plus a dedicated Anthropic Messages adapter for Claude. A failed JSON contract is reported as an error, never silently retried with made-up data.
 
 ```
 electron/        main process: window, IPC, workspace, indexer, db, secrets, terminal, lsp
@@ -221,7 +226,7 @@ Adiutor (Latince *yardımcı*), tek bir fikrin etrafında kuruldu: kod yazan yap
 
 Sonsuz bir sohbet yerine iş üç ajana bölünür: **planlayıcı**, **kodlayıcı** ve **inceleyici**. Her görev devri görev grafiğinde görünür, her dosya değişikliği gerçek bir diff olarak açılır ve her komut senin onayını bekler. Hiçbir şey arka planda yazılmaz, çalıştırılmaz veya bir yere gönderilmez.
 
-Uygulama tamamen kendi bilgisayarında çalışır. Tek ağ trafiği, kendi girdiğin sağlayıcı anahtarıyladır: **OpenAI**, **Anthropic Claude**, **DeepSeek** veya **xAI Grok**.
+Uygulama tamamen kendi bilgisayarında çalışır. Tek ağ trafiği, kendi girdiğin sağlayıcı anahtarıyladır: **OpenAI**, **Anthropic Claude**, **Google Gemini**, **DeepSeek**, **xAI Grok**, **Mistral**, **Groq** veya **OpenRouter**; istersen anahtar istemeyen yerel **Ollama** sunucusu.
 
 ## Neler yapıyor?
 
@@ -244,7 +249,7 @@ npm install
 npm run dev
 ```
 
-- **Ayarlar → Sağlayıcı** bölümünden OpenAI, Claude, DeepSeek veya Grok seçip anahtarını gir. Model seçimini ajan bazında değiştirebilirsin.
+- **Ayarlar → Sağlayıcı** bölümünden sağlayıcıyı seçip anahtarını gir (Ollama anahtar istemez). Modeli aranabilir listeden seçebilir, listede olmayan bir kimliği elle yazabilir ve her ajana ayrı model verebilirsin.
 - **Örnek projeyi aç** ile küçük bir TypeScript + Python projesi oluşturulur.
 - Görev grafiğinde bir görev yaz (örn. `Görev başlığını kısalt ve yardımcı fonksiyon ekle`), **Görevi başlat**.
 - Planlayıcının devrini onayla, inceleyicinin `npm test` komutunu onayla, diff’i incele ve kabul et.

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useStore } from '@/state/store';
 import { formatTokens } from '@shared/tokens';
 import { Markdown } from './ui/Markdown';
+import { ModelPicker } from './ui/ModelPicker';
 import { Badge, IconButton, StatusDot } from './ui/primitives';
 import { AlertIcon, PlayIcon, SendIcon, StopIcon, TrashIcon, XIcon } from './ui/Icons';
 import { ApprovalList } from './ApprovalList';
@@ -51,6 +52,7 @@ export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => voi
   const openReview = useStore((state) => state.openReview);
   const setView = useStore((state) => state.setView);
   const clearChat = useStore((state) => state.clearChat);
+  const saveSettings = useStore((state) => state.saveSettings);
 
   const messagesRef = useRef<HTMLDivElement | null>(null);
 
@@ -64,7 +66,9 @@ export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => voi
   const pendingApprovals = approvals.filter((approval) => approval.status === 'pending').length;
   const running = task.status === 'running' || task.status === 'awaiting-approval';
   const provider = providerStatus?.providers.find((item) => item.id === settings.provider);
-  const missingKey = providerStatus ? providerStatus.apiKeys[settings.provider] !== true : false;
+  const missingKey = providerStatus && provider?.requiresApiKey
+    ? providerStatus.apiKeys[settings.provider] !== true
+    : false;
 
   const submitTask = () => {
     const title = chatInput.trim();
@@ -80,8 +84,17 @@ export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => voi
       <div className="chat-header">
         <div className="grow">
           <div className="chat-title">Sohbet</div>
-          <div className="chat-subtitle" title={`${provider?.label ?? 'Sağlayıcı'} · ${settings.model}`}>
-            {provider?.label ?? 'Sağlayıcı'} · {settings.model}
+          <div className="chat-model-line">
+            <span className="chat-subtitle">{provider?.label ?? 'Sağlayıcı'}</span>
+            <ModelPicker
+              models={provider?.models ?? []}
+              value={settings.model}
+              providerLabel={provider?.label}
+              ariaLabel="Sohbet modeli"
+              compact
+              align="right"
+              onChange={(model) => void saveSettings({ model })}
+            />
           </div>
         </div>
         {pendingChanges > 0 ? (

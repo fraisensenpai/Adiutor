@@ -3,6 +3,7 @@ import { useStore } from '@/state/store';
 import { formatTokens } from '@shared/tokens';
 import type { AgentEdgeState, AgentNodeState, AgentRole } from '@shared/types';
 import { ApprovalList } from './ApprovalList';
+import { ModelPicker } from './ui/ModelPicker';
 import { Badge, StatusDot } from './ui/primitives';
 import { CheckIcon, FolderIcon, PlayIcon, StopIcon } from './ui/Icons';
 import { formatTime, roleLabel, statusLabel, taskStatusLabel } from '@/lib/format';
@@ -78,20 +79,15 @@ function AgentCard({ role }: { role: AgentRole }) {
         </div>
         <div className="agent-field">
           <label htmlFor={`model-${role}`}>Model</label>
-          <input
+          <ModelPicker
             id={`model-${role}`}
-            className="input"
-            list={`models-${role}`}
+            models={models}
             value={agent.model}
-            onChange={(event) => setAgentModel(role, event.target.value)}
-            spellCheck={false}
-            title="Model kimliği"
+            providerLabel={providerStatus?.providers.find((item) => item.id === settings.provider)?.label}
+            ariaLabel="Model"
+            compact
+            onChange={(model) => setAgentModel(role, model)}
           />
-          <datalist id={`models-${role}`}>
-            {models.map((model) => (
-              <option key={model} value={model} />
-            ))}
-          </datalist>
         </div>
       </div>
 

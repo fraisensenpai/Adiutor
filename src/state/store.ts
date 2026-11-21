@@ -250,6 +250,9 @@ function providerLabelOf(status: ProviderStatus | null, provider: ProviderId): s
 }
 
 function hasKeyFor(status: ProviderStatus | null, provider: ProviderId): boolean {
+  const info = status?.providers.find((item) => item.id === provider);
+  // Yerel sağlayıcılar (ör. Ollama) anahtar istemez.
+  if (info && !info.requiresApiKey) return true;
   return status?.apiKeys[provider] === true;
 }
 
@@ -266,7 +269,7 @@ const WELCOME = (status: ProviderStatus | null, settings: AppSettings): ChatMess
     : [
         '**Başlamak için bir API anahtarı ekleyin.**',
         '',
-        'Ayarlar → Sağlayıcı bölümünden OpenAI, Claude, DeepSeek veya Grok anahtarınızı kaydedin. Anahtar işletim sisteminin güvenli kasasında şifreli tutulur ve yalnızca ana süreçte okunur.',
+        'Ayarlar → Sağlayıcı bölümünden bir sağlayıcı seçip API anahtarınızı kaydedin. Anahtar işletim sisteminin güvenli kasasında şifreli tutulur ve yalnızca ana süreçte okunur. Ollama gibi yerel sağlayıcılar anahtar istemez.',
       ].join('\n'),
 });
 
